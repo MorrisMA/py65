@@ -5,30 +5,36 @@
 Usage: %s [options]
 
 Options:
--h, --help           : Show this message
--m, --mpu <device>   : Choose which MPU device (default is 6502)
--l, --load <file>    : Load a file at address 0
--r, --rom <file>     : Load a rom at the top of address space and reset into it
--g, --goto <address> : Perform a goto command after loading any files
+-h, --help             : Show this message
+-m, --mpu <device>     : Choose which MPU device (default is 6502)
+-l, --load <file>      : Load a file at address 0
+-r, --rom <file>       : Load a rom at the top of address space and reset into it
+-g, --goto <address>   : Perform a goto command after loading any files
+-i, --input <address>  : define location of getc (default $f004)
+-o, --output <address> : define location of putc (default $f001)
 """
+
+import os
+import sys
+
+sys.path.append(os.getcwd())
 
 import cmd
 import getopt
-import os
 import re
 import shlex
-import sys
 
 from asyncore import compact_traceback
-from py65.devices.mpu6502 import MPU as NMOS6502
-from py65.devices.mpu65c02 import MPU as CMOS65C02
-from py65.devices.mpu65org16 import MPU as V65Org16
-from py65.disassembler import Disassembler
-from py65.assembler import Assembler
-from py65.utils.addressing import AddressParser
-from py65.utils import console
-from py65.utils.conversions import itoa
-from py65.memory import ObservableMemory
+from devices.mpu6502 import MPU as NMOS6502
+from devices.mpu65c02 import MPU as CMOS65C02
+from devices.mpu65org16 import MPU as V65Org16
+from devices.mpuM65C02A import MPU as M65C02A
+from disassembler import Disassembler
+from assembler import Assembler
+from utils.addressing import AddressParser
+from utils import console
+from utils.conversions import itoa
+from memory import ObservableMemory
 
 try:
     from urllib2 import urlopen
@@ -38,64 +44,91 @@ except ImportError: # Python 3
 class Monitor(cmd.Cmd):
 
     Microprocessors = {'6502': NMOS6502, '65C02': CMOS65C02,
-                       '65Org16': V65Org16}
+                       '65Org16': V65Org16, 'M65C02A': M65C02A}
 
     def __init__(self, mpu_type=NMOS6502, completekey='tab', stdin=None,
-                 stdout=None, argv=None):
+                 stdout=None, argv=None, memory=None, putc_addr=0xF001, getc_addr=0xF004):
         self.mpu_type = mpu_type
+        self.memory = memory
+        self.putc_addr = putc_addr
+        self.getc_addr = getc_addr
         if argv is None:
             argv = sys.argv
-        self._reset(self.mpu_type)
         self._breakpoints = []
         self._width = 78
         self.prompt = "."
         self._add_shortcuts()
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
         self._parse_args(argv)
+        self._reset(self.mpu_type, self.getc_addr, self.putc_addr)
 
     def _parse_args(self, argv):
         try:
-            shortopts = 'hm:l:r:g:'
-            longopts = ['help', 'mpu=', 'load=', 'rom=', 'goto=']
+            shortopts = 'hi:o:m:l:r:g:'
+            longopts = ['help', 'mpu=', 'input=', 'output=', 'load=', 'rom=', 'goto=']
             options, args = getopt.getopt(argv[1:], shortopts, longopts)
         except getopt.GetoptError as exc:
             self._output(exc.args[0])
             self._usage()
             self._exit(1)
 
+        load = None
+        rom  = None
+        goto = None
+        mpu  = None
+
         for opt, value in options:
+            if opt in ('-i', '--input'):
+                self.getc_addr = int(value, 16)
+
+            if opt in ('-o', '--output'):
+                self.putc_addr = int(value, 16)
+
             if opt in ('-l', '--load'):
-                cmd = "load %s" % value
-                self.onecmd(cmd)
+                load = value
 
             if opt in ('-r', '--rom'):
-                # load a ROM and run from the reset vector
-                cmd = "load '%s' top" % value
-                self.onecmd(cmd)
-                physMask = self._mpu.memory.physMask
-                reset = self._mpu.RESET & physMask
-                dest = self._mpu.memory[reset] + \
-                    (self._mpu.memory[reset + 1] << self.byteWidth)
-                cmd = "goto %08x" % dest
-                self.onecmd(cmd)
+                rom = value
 
             if opt in ('-g', '--goto'):
-                cmd = "goto %s" % value
-                self.onecmd(cmd)
+                goto = value
 
             if opt in ('-m', '--mpu'):
-                if self._get_mpu(value) is None:
-                    mpus = list(self.Microprocessors.keys())
-                    mpus.sort()
-                    msg = "Fatal: no such MPU. Available MPUs: %s"
-                    self._output(msg % ', '.join(mpus))
-                    sys.exit(1)
-                cmd = "mpu %s" % value
-                self.onecmd(cmd)
+                mpu = value
 
             elif opt in ("-h", "--help"):
                 self._usage()
-                self._exit(1)
+                self._exit(0)
+
+        if (mpu is not None) or (rom is not None):
+            if mpu is None:
+                mpu = "6502"
+            if self._get_mpu(mpu) is None:
+                mpus = list(self.Microprocessors.keys())
+                mpus.sort()
+                msg = "Fatal: no such MPU. Available MPUs: %s"
+                self._output(msg % ', '.join(mpus))
+                sys.exit(1)
+            self.mpu_type = self._get_mpu(mpu)
+
+        if load is not None:
+            cmd = "load %s" % load
+            self.onecmd(cmd)
+
+        if goto is not None:
+            cmd = "goto %s" % goto
+            self.onecmd(cmd)
+
+        if rom is not None:
+            # load a ROM and run from the reset vector
+            cmd = "load '%s' top" % rom
+            self.onecmd(cmd)
+            physMask = self._mpu.memory.physMask
+            reset = self._mpu.RESET & physMask
+            dest = self._mpu.memory[reset] + \
+                (self._mpu.memory[reset + 1] << self.byteWidth)
+            cmd = "goto %08x" % dest
+            self.onecmd(cmd)
 
     def _usage(self):
         usage = __doc__ % sys.argv[0]
@@ -119,15 +152,16 @@ class Monitor(cmd.Cmd):
 
         return result
 
-    def _reset(self, mpu_type):
-        self._mpu = mpu_type()
+    def _reset(self, mpu_type, getc_addr=0xF004, putc_addr=0xF001):
+        self._mpu = mpu_type(memory=self.memory)
         self.addrWidth = self._mpu.ADDR_WIDTH
         self.byteWidth = self._mpu.BYTE_WIDTH
         self.addrFmt = self._mpu.ADDR_FORMAT
         self.byteFmt = self._mpu.BYTE_FORMAT
         self.addrMask = self._mpu.addrMask
         self.byteMask = self._mpu.byteMask
-        self._install_mpu_observers()
+        if getc_addr and putc_addr:
+            self._install_mpu_observers(getc_addr, putc_addr)
         self._address_parser = AddressParser()
         self._disassembler = Disassembler(self._mpu, self._address_parser)
         self._assembler = Assembler(self._mpu, self._address_parser)
@@ -200,7 +234,7 @@ class Monitor(cmd.Cmd):
                 break
         return mpu
 
-    def _install_mpu_observers(self):
+    def _install_mpu_observers(self, getc_addr, putc_addr):
         def putc(address, value):
             try:
                 self.stdout.write(chr(value))
@@ -216,9 +250,9 @@ class Monitor(cmd.Cmd):
                 byte = 0
             return byte
 
-        m = ObservableMemory(addrWidth=self.addrWidth)
-        m.subscribe_to_write([0xF001], putc)
-        m.subscribe_to_read([0xF004], getc)
+        m = ObservableMemory(subject=self.memory, addrWidth=self.addrWidth)
+        m.subscribe_to_write([self.putc_addr], putc)
+        m.subscribe_to_read([self.getc_addr], getc)
 
         self._mpu.memory = m
 
@@ -267,7 +301,7 @@ class Monitor(cmd.Cmd):
                 self._output("Unknown MPU: %s" % args)
                 available_mpus()
             else:
-                self._reset(new_mpu)
+                self._reset(new_mpu, self.getc_addr, self.putc_addr)
                 self._output("Reset with new MPU %s" % self._mpu.name)
 
     def help_mpu(self):
@@ -293,8 +327,8 @@ class Monitor(cmd.Cmd):
             end = start + len(bytes)
             self._mpu.memory[start:end] = bytes
             self.do_disassemble(self.addrFmt % start)
-        except KeyError:
-            self._output("Bad label: %s" % args)
+        except KeyError as exc:
+            self._output(exc.args[0]) # "Label not found: foo"
         except OverflowError:
             self._output("Overflow error: %s" % args)
         except SyntaxError:
@@ -314,17 +348,17 @@ class Monitor(cmd.Cmd):
         else:
             try:
                 start = self._address_parser.number(args)
-            except KeyError:
-                self._output("Bad label: %s" % args)
+            except KeyError as exc:
+                self._output(exc.args[0]) # "Label not found: foo"
                 return
 
         while True:
             prompt = "\r$" + (self.addrFmt % start) + "   " + \
-                (" " * int(1 + self.byteWidth / 4) * 3)
+                     (" " * int(1 + self.byteWidth / 4) * 3)
 
-            line = console.line_input(prompt,
+            line = console.line_input(prompt, \
                                       stdin=self.stdin, stdout=self.stdout)
-
+           
             if not line.strip():
                 self.stdout.write("\n")
                 return
@@ -436,7 +470,9 @@ class Monitor(cmd.Cmd):
 
         self._mpu.pc = self._address_parser.number(args)
         brks = [0x00]  # BRK
+        self._mpu.dbg = True
         self._run(stopcodes=brks)
+        self._mpu.dbg = False
 
     def _run(self, stopcodes):
         stopcodes = set(stopcodes)
@@ -534,13 +570,35 @@ class Monitor(cmd.Cmd):
                     self._output(msg % (value, register))
                     continue
 
-                if register != 'pc':
-                    if intval != (intval & self.byteMask):
-                        msg = "Overflow: %r too wide for register %r"
-                        self._output(msg % (value, register))
-                        continue
+                if self._mpu.name.lower() == 'm65c02a':
+                    if register in ['a', 'x', 'y','sp', 'pc', 'p']:
+                        if register == 'a':
+                            self._mpu.a[0] = intval
+                        elif register == 'x':
+                            self._mpu.x[0] = intval
+                        elif register == 'y':
+                            self._mpu.y[0] = intval
+                        elif register == 'sp':
+                            if self._mpu.p & self._mpu.MODE:
+                                self._mpu.sp[1] = intval
+                            else:
+                                self._mpu.sp[0] = intval
+                        elif register == 'pc':
+                            self._mpu.pc = intval
+                        elif register == 'p':
+                            if intval != (intval & self.byteMask):
+                                msg = "Overflow: %r too wide for register %r"
+                                self._output(msg % (value, register))
+                            else:
+                                self._mpu.p = intval
+                else:
+                    if register != 'pc':
+                        if intval != (intval & self.byteMask):
+                            msg = "Overflow: %r too wide for register %r"
+                            self._output(msg % (value, register))
+                            continue
 
-                setattr(self._mpu, register, intval)
+                    setattr(self._mpu, register, intval)
 
     def help_cd(self):
         self._output("cd <directory>")
@@ -667,10 +725,13 @@ class Monitor(cmd.Cmd):
         if len(split) < 2:
             return self.help_fill()
 
-        start, end = self._address_parser.range(split[0])
-        filler = list(map(self._address_parser.number, split[1:]))
-
-        self._fill(start, end, filler)
+        try:
+            start, end = self._address_parser.range(split[0])
+            filler = list(map(self._address_parser.number, split[1:]))
+        except KeyError as exc:
+            self._output(exc.args[0])  # "Label not found: foo"
+        else:
+            self._fill(start, end, filler)
 
     def _fill(self, start, end, filler):
         address = start
@@ -727,10 +788,15 @@ class Monitor(cmd.Cmd):
             self._output("Syntax error: %s" % args)
             return self.help_add_label()
 
-        address = self._address_parser.number(split[0])
-        label = split[1]
-
-        self._address_parser.labels[label] = address
+        try:
+            address = self._address_parser.number(split[0])
+        except KeyError as exc:
+            self._output(exc.args[0]) # "Label not found: foo"
+        except OverflowError:
+            self._output("Overflow error: %s" % args)
+        else:
+            label = split[1]
+            self._address_parser.labels[label] = address
 
     def help_show_labels(self):
         self._output("show_labels")

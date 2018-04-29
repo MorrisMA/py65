@@ -83,15 +83,15 @@ def line_input(prompt='', stdin=sys.stdin, stdout=sys.stdout):
     while True:
         char = getch(stdin)
         code = ord(char)
-        if char in ("\n", "\r"):
+        if char in ("\n", "\r"):    # newline, return
             break
-        elif code in (0x7f, 0x08):  # backspace
+        elif code == 0x1B:          # escape
+            pass
+        elif code in (0x7F, 0x08):  # delete, backspace
             if len(line) > 0:
                 line = line[:-1]
-                stdout.write("\r%s\r%s%s" %
+                stdout.write("\r%s\r%s%s" % \
                              (' ' * (len(prompt + line) + 5), prompt, line))
-        elif code == 0x1b:  # escape
-            pass
         else:
             line += char
             stdout.write(char)

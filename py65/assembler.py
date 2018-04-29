@@ -4,26 +4,29 @@ from py65.utils.addressing import AddressParser
 
 class Assembler:
     Statement = re.compile(r'^([A-z]{3}[0-7]?\s+'
-                           r'\(?\s*)([^,\s\)]+)(\s*[,xXyY\s]*\)?'
-                           r'[,xXyY\s]*)$')
+                           r'\(?\s*)([^,\s\)]+)(\s*[,xXyYiI\s]*\)?'
+                           r'[,xXyYiI\s]*|\s*,\s*[^,\s\)]+)$')
 
     Addressing = (
-        ('zpi', "($00FF)"),
-        ('zpx', "$00FF,X"),
-        ('zpy', "$00FF,Y"),
-        ('zpg', "$00FF"),
-        ('inx', "($00FF,X)"),
-        ('iax', "($FFFF,X)"),
-        ('iny', "($00FF),Y"),
-        ('ind', "($FFFF)"),
-        ('abx', "$FFFF,X"),
-        ('aby', "$FFFF,Y"),
-        ('abs', "$FFFF"),
-        ('rel', "$FFFF"),
-        ('imp', ""),
-        ('acc', ""),
-        ('acc', "A"),
-        ('imm', "#$FF")
+        ('zp',    "$00FF"),
+        ('zpX',   "$00FF,X"),
+        ('zpY',   "$00FF,Y"),
+        ('zpI',   "($00FF)"),
+        ('zpXI',  "($00FF,X)"),
+        ('zpIY',  "($00FF),Y"),
+        ('abs',   "$FFFF"),
+        ('absX',  "$FFFF,X"),
+        ('absY',  "$FFFF,Y"),
+        ('absI',  "($FFFF)"),
+        ('absXI', "($FFFF,X)"),
+        ('rel',   "$FFFF"),
+        ('imp',   ""),
+        ('acc',   ""),
+        ('acc',   "A"),
+        ('imm',   "#$FF"),
+        ('rel16', "$FFFF"),
+        ('ipp',   "$00FF,I"),
+        ('zprel', "$00FF,$FFFF"),
     )
 
     def __init__(self, mpu, address_parser=None):
@@ -70,10 +73,18 @@ class Assembler:
                     relative = relative & self._mpu.byteMask
                     operands = [(self._mpu.BYTE_FORMAT % relative)]
 
+                elif mode == 'rel16':
+                   # relative branch
+                   absolute = int(''.join(operands), 16)
+                   relative = (absolute - pc) - 3
+                   relative = relative & self._mpu.wordMask
+                   operands = [(self._mpu.WORD_FORMAT % relative)]
+                   operands = [operands[0][2:], operands[0][:2]]
+                    
                 elif len(operands) == 2:
                     # swap bytes
                     operands = (operands[1], operands[0])
-
+                
                 operands = [int(hex, 16) for hex in operands]
                 bytes.extend(operands)
 
@@ -93,12 +104,10 @@ class Assembler:
             the normalization is a tuple of two strings (opcode, operand).
         """
         statement = ' '.join(str.split(statement))
-
         # normalize target in operand
         match = self.Statement.match(statement)
         if match:
             before, target, after = match.groups()
-
             # target is an immediate value
             if target.startswith('#'):
                 try:
