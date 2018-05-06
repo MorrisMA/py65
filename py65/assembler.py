@@ -23,10 +23,10 @@ class Assembler:
         ('imp',   ""),
         ('acc',   ""),
         ('acc',   "A"),
-        ('imm',   "#$FF"),
+        ('imm',   "#$FFFF"),
         ('rel16', "$FFFF"),
         ('ipp',   "$00FF,I"),
-        ('zprel', "$00FF,$FFFF"),
+        ('zprel', "$00FF,$00FF"),
     )
 
     def __init__(self, mpu, address_parser=None):
@@ -56,7 +56,7 @@ class Assembler:
 
         for mode, pattern in self._addressing:
             match = pattern.match(operand)
-
+            
             if match:
                 # check if opcode supports this addressing mode
                 try:
@@ -118,7 +118,8 @@ class Assembler:
                 except IndexError:
                     raise SyntaxError(statement)
 
-                if (number < 0) or (number > self._mpu.byteMask):
+                # if (number < 0) or (number > self._mpu.byteMask):
+                if (number < 0) or (number > self._mpu.wordMask):
                     raise OverflowError
                 statement = before + '#$' + self._mpu.BYTE_FORMAT % number
 

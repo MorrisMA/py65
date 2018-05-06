@@ -276,7 +276,7 @@ class MPU():
         data = reg()
         self.wrDM(addr, data)
         if self.siz:
-            self.wrDM(hiAddr & mask & (addr + 1), data >> 8)
+            self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
 
     def rmw_zp(self, op):
         addr = self.rdPM()
@@ -1018,31 +1018,28 @@ class MPU():
 
     def zp(self):
         addr = self.rdPM()
-        mask = self.addrMask
+        mask = self.byteMask
+        hiAddr = 0
         if self.ind:
             # first indirect
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
             addr = (tmp2 << 8) + tmp1
-        return addr
+            mask = self.addrMask
+            hiAddr = 0
+        return hiAddr, mask, addr
     
     def abs(self):
         tmp1 = self.rdPM()
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
-        if self.osx:
-            if self.MODE & self.p:
-                base = self.sp[1]
-            else:
-                base = self.sp[0]
-            addr = mask & (addr + base)
         if self.ind:
             # first indirect
             tmp1 = self.rdDM(addr)
             tmp2 = self.rdDM(mask & (addr + 1))
             addr = (tmp2 << 8) + tmp1
-        return addr
+        return mask, addr
 
     def absI(self):
         tmp1 = self.rdPM()
@@ -1309,24 +1306,23 @@ class MPU():
         else:
             self.y[0] = data
     
-    def opPUL_zp(self, addr):
+    def opPUL_zp(self):
+        hiAddr, mask, addr = self.zp()
         self.rwDM(addr)
         data = self.PULL()
         self.FlagsNZ(data)
         self.wrDM(addr, data)
         if self.siz:
-            if self.ind:
-                self.wrDM(self.addrMask & (addr + 1), data >> 8)
-            else:
-                self.wrDM(self.byteMask & (addr + 1), data >> 8)
+            self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
         
-    def opPUL_abs(self, addr):
+    def opPUL_abs(self):
+        mask, addr = self.abs()
         self.rwDM(addr)
         data = self.PULL()
         self.FlagsNZ(data)
         self.wrDM(addr, data)
         if self.siz:
-            self.wrDM(self.addrMask & (addr + 1), data >> 8)
+            self.wrDM(mask & (addr + 1), data >> 8)
 
     def opPHR(self, offset):
         addr = self.addrMask & (self.pc + offset)
@@ -1528,7 +1524,7 @@ class MPU():
             self.a[0] = reg
         self.FlagsNZ(reg)
 
-    def opBIT(self, data):  # Used for BIT[.[x|y]w] addr
+    def opBIT(self, data):  # Used for BIT[.[x|xw|y|yw|w] addr
         reg = self.a[0]
         if (self.oax or self.oay):
             if self.oay:
@@ -1545,7 +1541,7 @@ class MPU():
         else:
             self.p |= data & (self.NEGATIVE | self.OVERFLOW)
 
-    def opBTI(self, data):  # Used for BIT[.[x|y]w] #imm
+    def opBTI(self, data):  # Used for BIT[.[x|xw|y|yw|w] #imm
         reg = self.a[0]
         if (self.oax or self.oay):
             if self.oay:
@@ -3060,7 +3056,7 @@ class MPU():
 
     @instruction(name="PUL", mode="zp", cycles=5)
     def inst_0xF4(self):
-        self.opPUL_zp(self.zp())
+        self.opPUL_zp()
         self.clrPrefixFlags()
 
 #
@@ -3749,7 +3745,7 @@ class MPU():
 
     @instruction(name="PUL", mode="abs", cycles=6)
     def inst_0xFC(self):
-        self.opPUL_abs(self.abs())
+        self.opPUL_abs()
         self.clrPrefixFlags()
 
 #
