@@ -479,6 +479,16 @@ class Monitor(cmd.Cmd):
         breakpoints = set(self._breakpoints)
         mpu = self._mpu
         mem = self._mpu.memory
+        
+        # vm status
+        self._mpu.excycles = 0
+        self._mpu.addcycles = False
+        self._mpu.processorCycles = 0
+        self._mpu.numInstructions = 0
+        self._mpu.pgmMemRdCycles  = 0
+        self._mpu.datMemRdCycles  = 0
+        self._mpu.datMemWrCycles  = 0
+        self._mpu.dummyCycles     = 0
 
         if not breakpoints:
             while True:
@@ -505,7 +515,20 @@ class Monitor(cmd.Cmd):
         self._output("Display the total number of cycles executed.")
 
     def do_cycles(self, args):
-        self._output(str(self._mpu.processorCycles))
+        #self._output(str(self._mpu.processorCycles))
+       
+        outString  = "Total = %d" % self._mpu.processorCycles
+        outString += ", Num Inst = %d" % self._mpu.numInstructions
+        outString += ", Pgm Rd = %d" % self._mpu.pgmMemRdCycles
+        outString += ", Data Rd = %d" % self._mpu.datMemRdCycles
+        outString += ", Data Wr = %d" % self._mpu.datMemWrCycles
+        outString += ", Dummy Cycles = %d\n" % self._mpu.dummyCycles
+        outString += "  CPI = %4.2f" % (float(self._mpu.processorCycles) \
+                                          / self._mpu.numInstructions)
+        outString += ", Avg Inst Len = %4.2f\n" % \
+                       (float(self._mpu.pgmMemRdCycles) \
+                        / self._mpu.numInstructions)
+        self._output(outString)
 
     def do_radix(self, args):
         radixes = {'Hexadecimal': 16, 'Decimal': 10, 'Octal': 8, 'Binary': 2}

@@ -62,6 +62,7 @@ class MPU():
         self.excycles = 0
         self.addcycles = False
         self.processorCycles = 0
+        self.numInstructions = 0
         self.pgmMemRdCycles  = 0
         self.datMemRdCycles  = 0
         self.datMemWrCycles  = 0
@@ -123,7 +124,9 @@ class MPU():
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
             print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
             self.pc = self.addrMask & (self.pc + 1)
-            self.processorCycles += 1; self.pgmMemRdCycles += 1
+            self.processorCycles += 1
+            self.numInstructions += 1
+            self.pgmMemRdCycles += 1
             return self.pc, instructCode
 
         self.pc, instructCode = getInstruction(self)
@@ -207,7 +210,7 @@ class MPU():
     def rwDM(self, addr):
         if self.dbg:
             print(' rwDM:', '-- <> mem[%04X]' % (addr))
-        self.processorCycles += 1
+        self.processorCycles += 1; self.dummyCycles += 1
 
     def WordAt(self, addr):
         addr = self.addrMask & addr
@@ -1306,6 +1309,15 @@ class MPU():
         else:
             self.y[0] = data
     
+    def opPSH_zp(self):
+        hiAddr, mask, addr = self.zp()
+        tmp1 = self.rdDM(addr)
+        tmp2 = 0
+        if self.siz:
+            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+        data = (tmp2 << 8) + tmp1
+        self.PUSH(data)
+        
     def opPUL_zp(self):
         hiAddr, mask, addr = self.zp()
         self.rwDM(addr)
@@ -1315,6 +1327,15 @@ class MPU():
         if self.siz:
             self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
         
+    def opPSH_abs(self):
+        mask, addr = self.abs()
+        tmp1 = self.rdDM(addr)
+        tmp2 = 0
+        if self.siz:
+            tmp2 = self.rdDM(mask & (addr + 1))
+        data = (tmp2 << 8) + tmp1
+        self.PUSH(data)
+
     def opPUL_abs(self):
         mask, addr = self.abs()
         self.rwDM(addr)
@@ -3046,7 +3067,7 @@ class MPU():
 
     @instruction(name="PSH", mode="zp", cycles=4)
     def inst_0xD4(self):
-        self.ro_zp(self.PUSH)
+        self.opPSH_zp()
         self.clrPrefixFlags()
 
     @instruction(name="CPX", mode="zp", cycles=3)
@@ -3735,7 +3756,7 @@ class MPU():
 
     @instruction(name="PSH", mode="abs", cycles=5)
     def inst_0xDC(self):
-        self.ro_abs(self.PUSH)
+        self.opPSH_abs()
         self.clrPrefixFlags()
 
     @instruction(name="CPX", mode="abs", cycles=4)
