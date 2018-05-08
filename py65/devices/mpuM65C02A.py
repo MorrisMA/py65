@@ -123,11 +123,13 @@ class MPU():
         def getInstruction(self):
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
             print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
-            self.pc = self.addrMask & (self.pc + 1)
+            pc = self.addrMask & (self.pc + 1)
+            if instructCode in (139, 155, 171, 187, 203, 219, 235, 251):
+                pass 
+            else: self.numInstructions += 1
             self.processorCycles += 1
-            self.numInstructions += 1
             self.pgmMemRdCycles += 1
-            return self.pc, instructCode
+            return pc, instructCode
 
         self.pc, instructCode = getInstruction(self)
         self.excycles = 0
@@ -143,20 +145,21 @@ class MPU():
 
     def reset(self):
         def psh(self, z):
-            sel = 1
-            self.memory[self.sp[sel]] = z & self.byteMask
-            tmp = self.sp[sel] - 1
-            if self.sp[sel] < 512:
+            self.memory[self.sp[self.sel]] = self.byteMask & z 
+            tmp = self.sp[self.sel] - 1
+            if self.sp[self.sel] < 512:
               tmp &= self.byteMask
-              self.sp[sel] = (self.sp[sel] & self.hiByteMask) | tmp
+              self.sp[self.sel] = (self.hiByteMask & self.sp[self.sel]) | tmp
 
         def pshW(self, z):
-            psh(self, (z >> self.BYTE_WIDTH) & self.byteMask)
-            psh(self, z & self.byteMask)
+            psh(self, self.byteMask & (z >> 8))
+            psh(self, self.byteMask & z)
 
-        self.sp[1] = self.spBase | 0x02
-        self.sp[0] = self.spBase | self.byteMask
-
+        self.sp[1] = (self.addrHighMask & self.spBase) + 0x02
+        self.sp[0] = (self.addrHighMask & self.spBase) + self.byteMask
+        
+        self.sel = 1
+        
         self.a  = {0: 0, 1: 0, 2: 0}
         self.x  = {0: 0, 1: 0, 2: 0}
         self.y  = {0: 0, 1: 0, 2: 0}
