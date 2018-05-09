@@ -1,5 +1,5 @@
 import re
-from py65.utils.addressing import AddressParser
+from utils.addressing import AddressParser
 
 
 class Assembler:
@@ -23,10 +23,11 @@ class Assembler:
         ('imp',   ""),
         ('acc',   ""),
         ('acc',   "A"),
+        ('imm',   "#$FF"),
         ('imm',   "#$FFFF"),
         ('rel16', "$FFFF"),
-        ('ipp',   "$00FF,I"),
-        ('zprel', "$00FF,$00FF"),
+        ('ipp',   "$FF,I"),
+        ('zprel', "$00FF,$FFFF"),
     )
 
     def __init__(self, mpu, address_parser=None):

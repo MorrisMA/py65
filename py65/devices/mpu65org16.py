@@ -1,4 +1,4 @@
-from py65.devices import mpu6502
+from devices import mpu6502
 
 
 class MPU(mpu6502.MPU):
