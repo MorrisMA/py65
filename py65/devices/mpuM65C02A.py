@@ -101,14 +101,14 @@ class MPU():
                                     self.name,
                                     self.pc,    # Program Counter
                                     self.a[0],  # ATOS
-                                    self.x[0],  # BTOS - Aux Stk Ptr, Base Ptr
+                                    self.x[0],  # XTOS - Aux Stk Ptr, Base Ptr
                                     self.y[0],  # YTOS
                                     self.sp[1], # System Stk Ptr
                                     self.ip,    # FORTH VM Interpretive Pointer
                                     flags,      # Processor Status Word
                                     indent[1],
                                     self.a[1],  # ANOS
-                                    self.x[1],  # BNOS
+                                    self.x[1],  # XNOS
                                     self.y[1],  # YNOS
                                     self.sp[0], # User Stk Ptr
                                     self.wp,    # FORTH VM Workspace Pointer
@@ -124,7 +124,8 @@ class MPU():
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
             print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
             pc = self.addrMask & (self.pc + 1)
-            if instructCode in (139, 155, 171, 187, 203, 219, 235, 251):
+#            if instructCode in (139, 155, 171, 187, 203, 219, 235, 251):
+            if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
                 pass 
             else: self.numInstructions += 1
             self.processorCycles += 1
@@ -1245,7 +1246,7 @@ class MPU():
     
     def opPLP(self):
         self.siz = False            # force 8-bit stack pop
-        tmp  = self.PULL()          # pop 8-bit value from stack
+        tmp  =  self.PULL()         # pop 8-bit value from stack
         tmp |=  self.BREAK          # set B bit (cleared on stack on NMI/INT)
         tmp &= ~self.MODE           # Mode can only be set by RTI instruction
         tmp |=  self.MODE & self.p  # keep current setting of Mode bit
@@ -1957,10 +1958,6 @@ class MPU():
         else:
             self.a[0] = reg
 
-    def opADD(self, data):
-        self.p &= ~self.CARRY
-        opADC(data)
-
     def opSBC(self, data):
         if self.siz:
             sign = self.NEGATIVE << 8
@@ -2028,10 +2025,6 @@ class MPU():
             self.y[0] = reg
         else:
             self.a[0] = reg
-
-    def opSUB(self, data):
-        self.p |= self.CARRY
-        opSBC(data)
 
 #
 #   Increment/Decrement/Compare Unit OPerations
@@ -2598,7 +2591,6 @@ class MPU():
             gth counter. The counter is decremented and sets the ALU N and Z
             flags. 
         """
-        
         tmp2 = self.rdPM()
         sign = self.NEGATIVE << 8
         
@@ -2633,6 +2625,19 @@ class MPU():
                 break
         
     def opXMA(self, data):
+        """
+            This instruction exchanges the selected register with memory pointed
+            to by zp,X. The addressing mode support function delivers the memory
+            data to this function, which then completes the exchange with the 
+            selected register, and returns to the addressing mode function the
+            value in the selected register so the addressing mode function can
+            complete the operation by writing the register to the addressed
+            memory location.
+            
+            The instruction supports all of the prefix instructions. If OAX is
+            used to select the X register, then the required index is provided
+            by the contents of the accumulator A.
+        """
         if self.oay:
             reg = self.y[0]
         elif self.oax:
@@ -2899,7 +2904,7 @@ class MPU():
         self.imm(self.opADJ)
         self.clrPrefixFlags()
 
-    @instruction(name="CMP", mode='zpi', cycles=5)
+    @instruction(name="CMP", mode='zpI', cycles=5)
     def inst_0xD2(self):
         self.ro_zpI(self.opCMP)
         self.pc = self.addrMask & (self.pc + 1)
