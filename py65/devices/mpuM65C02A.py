@@ -1,7 +1,6 @@
 from utils.conversions import itoa
 from utils.devices import make_instruction_decorator
 
-
 class MPU():
     # vectors
 
@@ -243,18 +242,18 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         if self.ind:
             # first indirect
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
         
         data = self.rdDM(addr)
         if self.siz:
-            data += self.rdDM(hiAddr + mask & (addr + 1)) << 8
+            data += self.rdDM(hiAddr + (mask & (addr + 1))) << 8
         op(data)
 
     def wo_zp(self, reg):
@@ -271,11 +270,11 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         if self.ind:
             # first indirect
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
@@ -283,7 +282,7 @@ class MPU():
         data = reg()
         self.wrDM(addr, data)
         if self.siz:
-            self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
+            self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
 
     def rmw_zp(self, op):
         addr = self.rdPM()
@@ -298,24 +297,24 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         if self.ind:
             # first indirect
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
         #read memory
         data = self.rdDM(addr)
         if self.siz:
-            data += self.rdDM(hiAddr + mask & (addr + 1)) << 8
+            data += self.rdDM(hiAddr + (mask & (addr + 1))) << 8
         # modify
         data = op(data)
         # write memory
         self.wrDM(addr, data)
         if self.siz:
-            self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
+            self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
 
     def ro_zpX(self, op):
         if self.osx:
@@ -331,12 +330,12 @@ class MPU():
         addr = self.rdPM()
         if index < 512:                     # page 0/1 + unsigned(offset)
             hiAddr = (self.addrHighMask & index)
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
             mask = self.byteMask
             if self.ind:
                 # first indirect
                 tmp1 = self.rdDM(addr)
-                tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+                tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
                 addr = (tmp2 << 8) + tmp1
                 mask = self.addrMask
                 hiAddr = 0
@@ -354,7 +353,7 @@ class MPU():
         
         data = self.rdDM(addr)
         if self.siz:
-            data += self.rdDM(hiAddr + mask & (addr + 1)) << 8
+            data += self.rdDM(hiAddr + (mask & (addr + 1))) << 8
         op(data)
 
     def wo_zpX(self, reg):
@@ -372,11 +371,11 @@ class MPU():
         if index < 512:                     # page 0/1 + unsigned(offset)
             hiAddr = (self.addrHighMask & index)
             mask = self.byteMask
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
             if self.ind:
                 # first indirect
                 tmp1 = self.rdDM(addr)
-                tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+                tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
                 addr = (tmp2 << 8) + tmp1
                 mask = self.addrMask
                 hiAddr = 0
@@ -395,7 +394,7 @@ class MPU():
         data = reg()
         self.wrDM(addr, data)
         if self.siz:
-            self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
+            self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
 
     def rmw_zpX(self, op):
         if self.osx:
@@ -412,11 +411,11 @@ class MPU():
         mask = self.byteMask
         hiAddr = self.addrHighMask & index
         if index < 512:                     # page 0/1 + unsigned(offset)
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
             if self.ind:
                 # first indirect
                 tmp1 = self.rdDM(addr)
-                tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+                tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
                 addr = (tmp2 << 8) + tmp1
                 mask = self.addrMask
                 hiAddr = 0
@@ -425,22 +424,22 @@ class MPU():
             hiAddr = 0
             if addr & self.NEGATIVE:
                 addr += self.addrHighMask   # sign extend
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
             if self.ind:
                 # first indirect
                 tmp1 = self.rdDM(addr)
-                tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+                tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
                 addr = (tmp2 << 8) + tmp1
         # read memory
         data = self.rdDM(addr)
         if self.siz:
-            data += self.rdDM(hiAddr + mask & (addr + 1)) << 8
+            data += self.rdDM(hiAddr + (mask & (addr + 1))) << 8
         # modify
         data = op(data)
         # write memory
         self.wrDM(addr, data)
         if self.siz:
-           self.wrDM(hiAddr + mask & (addr + 1),  data >> 8)
+           self.wrDM(hiAddr + (mask & (addr + 1)),  data >> 8)
 
     def ro_zpY(self, op):
         if self.oay:
@@ -461,23 +460,23 @@ class MPU():
                     hiAddr = self.addrHighMask & base
                 else:
                     mask = self.addrMask
-                addr = hiAddr + mask & (addr + base)
+                addr = hiAddr + (mask & (addr + base))
             # first indirect
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
         if index < 512:                     # page 0/1 + unsigned(offset)
             if not self.ind:
                 hiAddr = (self.addrHighMask & index)
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
         else:                               # base + signed(offset)
             addr = mask & (index + addr)
         
         data = self.rdDM(addr)
         if self.siz:
-            data += self.rdDM(hiAddr + mask & (addr + 1)) << 8
+            data += self.rdDM(hiAddr + (mask & (addr + 1))) << 8
         op(data)
 
     def wo_zpY(self, reg):
@@ -499,17 +498,17 @@ class MPU():
                     hiAddr = self.addrHighMask & base
                 else:
                     mask = self.addrMask
-                addr = hiAddr + mask & (addr + base)
+                addr = hiAddr + (mask & (addr + base))
             # first indirect
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
         if index < 512:                     # page 0/1 + unsigned(offset)
             if not self.ind:
                 hiAddr = (self.addrHighMask & index)
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
         else:             # base + signed(offset)
             mask = self.addrMask
             if addr & self.NEGATIVE:
@@ -519,7 +518,7 @@ class MPU():
         data = reg()
         self.wrDM(addr, data)
         if self.siz:
-            self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
+            self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
 
     def ro_zpI(self, op):
         addr = self.rdPM()
@@ -534,10 +533,10 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         # first indirect
         tmp1 = self.rdDM(addr)
-        tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+        tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
         addr = (tmp2 << 8) + tmp1
         hiAddr = 0
         mask = self.addrMask
@@ -564,10 +563,10 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         # first indirect
         tmp1 = self.rdDM(addr)
-        tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+        tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
         hiAddr = 0
@@ -597,17 +596,17 @@ class MPU():
         mask = self.byteMask
         if index < 512:                     # stk/zero page + unsigned(offset)
             hiAddr = (index & self.addrHighMask)
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
             # first indirection
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
             if self.ind:
                 # second indirection
                 tmp1 = self.rdDM(addr)
-                tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+                tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
                 addr = (tmp2 << 8) + tmp1
         else:                               # base + signed(offset)
             mask = self.addrMask
@@ -643,10 +642,10 @@ class MPU():
         mask = self.byteMask
         if index < 512:                   # stk/zero page + unsigned(offset)
             hiAddr = (index & self.addrHighMask)
-            addr = hiAddr + mask & (index + addr)
+            addr = hiAddr + (mask & (index + addr))
             # first indirection
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
@@ -693,10 +692,10 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         # first indirection
         tmp1 = self.rdDM(addr)
-        tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+        tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
         hiAddr = 0
@@ -729,10 +728,10 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         # first indirection
         tmp1 = self.rdDM(addr)
-        tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+        tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
         hiAddr = 0
@@ -1030,7 +1029,7 @@ class MPU():
         if self.ind:
             # first indirect
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
             mask = self.addrMask
             hiAddr = 0
@@ -1141,10 +1140,10 @@ class MPU():
                 hiAddr = self.addrHighMask & base
             else:
                 mask = self.addrMask
-            addr = hiAddr + mask & (addr + base)
+            addr = hiAddr + (mask & (addr + base))
         if self.ind:
             tmp1 = self.rdDM(addr)
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
             addr = (tmp2 << 8) + tmp1
         
         data = self.rdDM(addr)
@@ -1318,7 +1317,7 @@ class MPU():
         tmp1 = self.rdDM(addr)
         tmp2 = 0
         if self.siz:
-            tmp2 = self.rdDM(hiAddr + mask & (addr + 1))
+            tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
         data = (tmp2 << 8) + tmp1
         self.PUSH(data)
         
@@ -1329,7 +1328,7 @@ class MPU():
         self.FlagsNZ(data)
         self.wrDM(addr, data)
         if self.siz:
-            self.wrDM(hiAddr + mask & (addr + 1), data >> 8)
+            self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
         
     def opPSH_abs(self):
         mask, addr = self.abs()
