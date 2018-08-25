@@ -1040,6 +1040,12 @@ class MPU():
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
+        if self.osx:
+            if self.MODE & self.p:
+                base = self.sp[1]
+            else:
+                base = self.sp[0]
+            addr = mask & (addr + base)
         if self.ind:
             # first indirect
             tmp1 = self.rdDM(addr)
@@ -1067,7 +1073,7 @@ class MPU():
             tmp1 = self.rdDM(addr)
             tmp2 = self.rdDM(mask & (addr + 1))
             addr = (tmp2 << 8) + tmp1
-        return addr
+        return mask, addr
 
     def absXI(self):
         if self.osx:
@@ -1094,7 +1100,7 @@ class MPU():
             tmp1 = self.rdDM(addr)
             tmp2 = self.rdDM(mask & (addr + 1))
             addr = (tmp2 << 8) + tmp1
-        return addr
+        return mask, addr
 
     #
     #   Returns a signed offset. Used with the branch instructions
@@ -1313,7 +1319,9 @@ class MPU():
             self.y[0] = data
     
     def opPSH_zp(self):
+        osx = self.osx; self.osx = False
         hiAddr, mask, addr = self.zp()
+        self.osx = osx
         tmp1 = self.rdDM(addr)
         tmp2 = 0
         if self.siz:
@@ -1322,7 +1330,9 @@ class MPU():
         self.PUSH(data)
         
     def opPUL_zp(self):
+        osx = self.osx; self.osx = False
         hiAddr, mask, addr = self.zp()
+        self.osx = osx
         self.rwDM(addr)
         data = self.PULL()
         self.FlagsNZ(data)
@@ -1331,7 +1341,9 @@ class MPU():
             self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
         
     def opPSH_abs(self):
+        osx = self.osx; self.osx = False
         mask, addr = self.abs()
+        self.osx = osx
         tmp1 = self.rdDM(addr)
         tmp2 = 0
         if self.siz:
@@ -1340,7 +1352,9 @@ class MPU():
         self.PUSH(data)
 
     def opPUL_abs(self):
+        osx = self.osx; self.osx = False
         mask, addr = self.abs()
+        self.osx = osx
         self.rwDM(addr)
         data = self.PULL()
         self.FlagsNZ(data)
@@ -1380,10 +1394,13 @@ class MPU():
 #
 
     def opJSR(self):
-        addr = self.abs()   # maybe more advantageous/useful if IND enabled
-                            # absXI addressing. It may provide a more useful
-        self.siz = True     # model for OOP using base/stack relative ptrs
-        self.PUSH(self.addrMask & (self.pc - 1))
+        osx = self.osx; self.osx = False  # jsr abs,S not supported
+        mask, addr = self.abs()   # may be better / more useful if IND enabled
+                                  # absXI addressing. May provide a more useful
+                                  # model for OOP using base/stack relative ptrs
+        self.osx = osx
+        self.siz = True
+        self.PUSH(mask & (self.pc - 1))
 
         self.pc = addr
 
@@ -2554,13 +2571,13 @@ class MPU():
     
     def opENT(self):
         if self.osx:
-            self.osx = False  # use PSP instead of the RSP
+            self.osx = False        # use PSP instead of the RSP
             if self.MODE & self.p:
                 sel = 1
             else:
                 sel = 0
         else:
-            self.osx = True   # use RSP
+            self.osx = True         # use RSP
         
         self.siz = True
         self.PUSH(self.ip)
@@ -3718,7 +3735,7 @@ class MPU():
 
     @instruction(name="JMP", mode="abs", cycles=3)
     def inst_0x4C(self):
-        self.pc = self.abs()
+        _, self.pc = self.abs()
         self.clrPrefixFlags()
 
     @instruction(name="PHR", mode="rel16", cycles=6)
@@ -3728,12 +3745,12 @@ class MPU():
 
     @instruction(name="JMP", mode="absI", cycles=5)
     def inst_0x6C(self):
-        self.pc = self.absI()
+        _, self.pc = self.absI()
         self.clrPrefixFlags()
 
     @instruction(name="JMP", mode="absXI", cycles=6)
     def inst_0x7C(self):
-        self.pc = self.absXI()
+        _, self.pc = self.absXI()
         self.clrPrefixFlags()
 
     @instruction(name="STY", mode="abs", cycles=4)
