@@ -39,13 +39,15 @@ class MPU():
 
     # declare Prefix Byte Boolean Flags Registers
 
-    osx = False
-    oax = False
-    oay = False
-    ind = False
-    siz = False
+    osx  = False
+    oax  = False
+    oay  = False
+    ind  = False
+    siz  = False
+    
+    lscx = False  # override osx for the LDX/STX/CPX zp/abs instructions
 
-    dbg = False
+    dbg  = False
 
     def __init__(self, memory=None, pc=0x0200):
         # config
@@ -141,7 +143,7 @@ class MPU():
     # - used after all non-prefix instructions
 
     def clrPrefixFlags(self):
-        self.osx = self.oax = self.oay = self.ind = self.siz = False
+        self.osx = self.oax = self.oay = self.ind = self.siz = self.lscx = False
 
     def reset(self):
         def psh(self, z):
@@ -233,7 +235,7 @@ class MPU():
         addr = self.rdPM()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -261,7 +263,7 @@ class MPU():
         data = reg()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -288,7 +290,7 @@ class MPU():
         addr = self.rdPM()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -317,7 +319,7 @@ class MPU():
             self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
 
     def ro_zpX(self, op):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -357,7 +359,7 @@ class MPU():
         op(data)
 
     def wo_zpX(self, reg):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -397,7 +399,7 @@ class MPU():
             self.wrDM(hiAddr + (mask & (addr + 1)), data >> 8)
 
     def rmw_zpX(self, op):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -451,7 +453,7 @@ class MPU():
         mask = self.byteMask
         hiAddr = 0
         if self.ind:
-            if self.osx:
+            if self.osx and not self.lscx:
                 if self.MODE & self.p:
                     base = self.sp[1]
                 else:
@@ -489,7 +491,7 @@ class MPU():
         mask = self.byteMask
         hiAddr = 0
         if self.ind:
-            if self.osx:
+            if self.osx and not self.lscx:
                 if self.MODE & self.p:
                     base = self.sp[1]
                 else:
@@ -524,7 +526,7 @@ class MPU():
         addr = self.rdPM()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -554,7 +556,7 @@ class MPU():
         addr = self.rdPM()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -582,7 +584,7 @@ class MPU():
         op(data)
 
     def ro_zpXI(self, op):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -628,7 +630,7 @@ class MPU():
         op(data)
 
     def wo_zpXI(self, reg):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -683,7 +685,7 @@ class MPU():
         addr = self.rdPM()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -719,7 +721,7 @@ class MPU():
         addr = self.rdPM()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -752,7 +754,7 @@ class MPU():
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -774,7 +776,7 @@ class MPU():
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -796,7 +798,7 @@ class MPU():
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -819,7 +821,7 @@ class MPU():
             self.wrDM(mask & (addr + 1), data >> 8)
 
     def ro_absX(self, op):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -844,7 +846,7 @@ class MPU():
         op(data)
 
     def wo_absX(self):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -870,7 +872,7 @@ class MPU():
         return
 
     def rmw_absX(self, op):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -911,7 +913,7 @@ class MPU():
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
         if self.ind:
-            if self.osx:
+            if self.osx and not self.lscx:
                 if self.MODE & self.p:
                     base = self.sp[1]
                 else:
@@ -938,7 +940,7 @@ class MPU():
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
         if self.ind:
-            if self.osx:
+            if self.osx and not self.lscx:
                 if self.MODE & self.p:
                     base = self.sp[1]
                 else:
@@ -1040,7 +1042,7 @@ class MPU():
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -1058,7 +1060,7 @@ class MPU():
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
         mask = self.addrMask
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -1076,7 +1078,7 @@ class MPU():
         return mask, addr
 
     def absXI(self):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
             else:
@@ -1137,7 +1139,7 @@ class MPU():
         addr = self.rdPM()
         mask = self.byteMask
         hiAddr = 0
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 base = self.sp[1]
             else:
@@ -1177,7 +1179,7 @@ class MPU():
 #
 
     def PUSH(self, data):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.siz:
                 self.wrDM(self.x[0], data >> 8)
                 addr = self.addrMask & (self.x[0] - 1)
@@ -1211,7 +1213,7 @@ class MPU():
             self.sp[sel] = addr
 
     def PULL(self):
-        if self.osx:
+        if self.osx and not self.lscx:
             addr = self.addrMask & (self.x[0] + 1)
             if self.x[0] < 512:
                 hiAddr = self.hiByteMask & self.x[0]
@@ -1277,7 +1279,7 @@ class MPU():
             self.a[0] = data
     
     def opPHX(self):
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 sel = 1
             else:
@@ -1292,7 +1294,7 @@ class MPU():
     def opPLX(self):
         data = self.PULL()
         self.FlagsNZ(data)
-        if self.osx:
+        if self.osx and not self.lscx:
             if self.MODE & self.p:
                 sel = 1
             else:
@@ -1380,7 +1382,7 @@ class MPU():
         elif self.NEGATIVE & data:
             data = self.wordMask & (self.hiByteMask | data)
 
-        if self.osx:
+        if self.osx and not self.lscx:
             self.x[0] = self.addrMask & (self.x[0] + data)
         else:
             if self.p & self.MODE:
@@ -2258,7 +2260,7 @@ class MPU():
             self.p |= self.CARRY
         if (mask & sum) == 0:
             self.p |= self.ZERO
-        if sign & tmp:
+        if sign & sum:
             self.p |= self.NEGATIVE
 
         if self.siz:
@@ -2290,7 +2292,7 @@ class MPU():
             self.p |= self.CARRY
         if (mask & sum) == 0:
             self.p |= self.ZERO
-        if sign & tmp:
+        if sign & sum:
             self.p |= self.NEGATIVE
 
         if self.siz:
@@ -2318,7 +2320,10 @@ class MPU():
                 sel = 1
             else:
                 sel = 0
-            self.sp[sel] = data
+            if self.siz:
+                self.sp[sel] = self.wordMask & data
+            else:
+                self.sp[sel] = 256 + (self.byteMask & data)
         elif self.oax:
             self.a[0] = data
         else:
@@ -2365,7 +2370,7 @@ class MPU():
         return 0
 
     def opTAX(self):
-        if self.osx:    # TAS
+        if self.osx and not self.lscx:    # TAS
             if self.MODE & self.p:
                 stk = 1
             else:
@@ -2538,7 +2543,7 @@ class MPU():
         self.pc = codeFieldAddr
     
     def opPHI(self):
-        if self.osx:                # Change default stack for PHI
+        if self.osx and not self.lscx:                # Change default stack for PHI
             self.osx = False        # change default to S, Sk or Su
         else:
             self.osx = True         # change default to AUX, Sx
@@ -2557,7 +2562,7 @@ class MPU():
             self.ip = self.wordMask & (self.ip + 1)
     
     def opPLI(self):
-        if self.osx:                # Change default stack for PHI
+        if self.osx and not self.lscx:                # Change default stack for PHI
             self.osx = False        # change default to S, Sk or Su
         else:
             self.osx = True         # change default to AUX, Sx
@@ -2570,7 +2575,7 @@ class MPU():
             self.ip = data
     
     def opENT(self):
-        if self.osx:
+        if self.osx and not self.lscx:
             self.osx = False        # use PSP instead of the RSP
             if self.MODE & self.p:
                 sel = 1
@@ -2784,6 +2789,7 @@ class MPU():
 
     @instruction(name="CPX", mode="imm", cycles=2)
     def inst_0xE0(self):
+        self.lscx = True
         self.imm(self.opCPX)
         self.clrPrefixFlags()
 
@@ -2907,6 +2913,7 @@ class MPU():
 
     @instruction(name="LDX", mode="imm", cycles=2)
     def inst_0xA2(self):
+        self.lscx = True
         self.imm(self.opLDX)
         self.clrPrefixFlags()
 
@@ -3096,6 +3103,7 @@ class MPU():
 
     @instruction(name="CPX", mode="zp", cycles=3)
     def inst_0xE4(self):
+        self.lscx = True
         self.ro_zp(self.opCPX)
         self.clrPrefixFlags()
 
@@ -3234,21 +3242,25 @@ class MPU():
 
     @instruction(name="STX", mode="zp", cycles=3)
     def inst_0x86(self):
+        self.lscx = True
         self.wo_zp(self.opSTX)
         self.clrPrefixFlags()
 
     @instruction(name="STX", mode="zpY", cycles=3)
     def inst_0x96(self):
+        self.lscx = True
         self.wo_zpY(self.opSTX)
         self.clrPrefixFlags()
 
     @instruction(name="LDX", mode="zp", cycles=3)
     def inst_0xA6(self):
+        self.lscx = True
         self.ro_zp(self.opLDX)
         self.clrPrefixFlags()
 
     @instruction(name="LDX", mode="zpY", cycles=3)
     def inst_0xB6(self):
+        self.lscx = True
         self.ro_zpY(self.opLDX)
         self.clrPrefixFlags()
 
@@ -3785,6 +3797,7 @@ class MPU():
 
     @instruction(name="CPX", mode="abs", cycles=4)
     def inst_0xEC(self):
+        self.lscx = True
         self.ro_abs(self.opCPX)
         self.clrPrefixFlags()
 
@@ -3923,6 +3936,7 @@ class MPU():
 
     @instruction(name="STX", mode="abs", cycles=5)
     def inst_0x8E(self):
+        self.lscx = True
         self.wo_abs(self.opSTX)
         self.clrPrefixFlags()
 
@@ -3933,11 +3947,13 @@ class MPU():
 
     @instruction(name="LDX", mode="abs", cycles=4)
     def inst_0xAE(self):
+        self.lscx = True
         self.ro_abs(self.opLDX)
         self.clrPrefixFlags()
 
     @instruction(name="LDX", mode="absY", cycles=4)
     def inst_0xBE(self):
+        self.lscx = True
         self.ro_absY(self.opLDX)
         self.clrPrefixFlags()
 
