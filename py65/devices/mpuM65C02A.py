@@ -1179,7 +1179,7 @@ class MPU():
 #
 
     def PUSH(self, data):
-        if self.osx and not self.lscx:
+        if self.osx:
             if self.siz:
                 self.wrDM(self.x[0], data >> 8)
                 addr = self.addrMask & (self.x[0] - 1)
@@ -1213,7 +1213,7 @@ class MPU():
             self.sp[sel] = addr
 
     def PULL(self):
-        if self.osx and not self.lscx:
+        if self.osx:
             addr = self.addrMask & (self.x[0] + 1)
             if self.x[0] < 512:
                 hiAddr = self.hiByteMask & self.x[0]
@@ -1279,7 +1279,7 @@ class MPU():
             self.a[0] = data
     
     def opPHX(self):
-        if self.osx and not self.lscx:
+        if self.osx:
             if self.MODE & self.p:
                 sel = 1
             else:
@@ -1294,7 +1294,7 @@ class MPU():
     def opPLX(self):
         data = self.PULL()
         self.FlagsNZ(data)
-        if self.osx and not self.lscx:
+        if self.osx:
             if self.MODE & self.p:
                 sel = 1
             else:
@@ -2196,15 +2196,8 @@ class MPU():
     #
     # Compare Operations
     #
-
-    def opCMP(self, memVal):
-        if self.oax:
-            regVal = int(self.x[0])
-        elif self.oay:
-            regVal = int(self.y[0])
-        else:
-            regVal = int(self.a[0])
-
+    
+    def _CMP(self, regVal, memVal):
         if self.siz:
             mask = self.wordMask
             sign = self.NEGATIVE << 8
@@ -2229,7 +2222,17 @@ class MPU():
             if (~(auL ^ auR) & (auL ^ sum)) & sign:
                 self.p |= self.OVERFLOW
             else:
-                self.p &= ~self.OVERFLOW
+                self.p &= ~self.OVERFLOW    
+
+    def opCMP(self, memVal):
+        if self.oax:
+            regVal = int(self.x[0])
+        elif self.oay:
+            regVal = int(self.y[0])
+        else:
+            regVal = int(self.a[0])
+        
+        self._CMP(regVal, memVal)
 
     def opCPX(self, memVal):
         if self.osx:
@@ -2243,31 +2246,7 @@ class MPU():
         else:
             regVal = int(self.x[0])
 
-        if self.siz:
-            mask = self.wordMask
-            sign = self.NEGATIVE << 8
-        else:
-            mask = self.byteMask
-            sign = self.NEGATIVE
-
-        auL = mask & regVal
-        auR = mask & (~memVal)
-
-        sum = auL + auR + 1
-
-        self.p &= ~(self.CARRY | self.ZERO | self.NEGATIVE)
-        if sum > mask:
-            self.p |= self.CARRY
-        if (mask & sum) == 0:
-            self.p |= self.ZERO
-        if sign & sum:
-            self.p |= self.NEGATIVE
-
-        if self.siz:
-            if (~(auL ^ auR) & (auL ^ sum)) & sign:
-                self.p |= self.OVERFLOW
-            else:
-                self.p &= ~self.OVERFLOW
+        self._CMP(regVal, memVal)
 
     def opCPY(self, memVal):
         if self.oay:
@@ -2275,31 +2254,7 @@ class MPU():
         else:
             regVal = int(self.y[0])
 
-        if self.siz:
-            mask = self.wordMask
-            sign = self.NEGATIVE << 8
-        else:
-            mask = self.byteMask
-            sign = self.NEGATIVE
-
-        auL = mask & regVal
-        auR = mask & (~memVal)
-
-        sum = auL + auR + 1
-
-        self.p &= ~(self.CARRY | self.ZERO | self.NEGATIVE)
-        if sum > mask:
-            self.p |= self.CARRY
-        if (mask & sum) == 0:
-            self.p |= self.ZERO
-        if sign & sum:
-            self.p |= self.NEGATIVE
-
-        if self.siz:
-            if (~(auL ^ auR) & (auL ^ sum)) & sign:
-                self.p |= self.OVERFLOW
-            else:
-                self.p &= ~self.OVERFLOW
+        self._CMP(regVal, memVal)
 
 #
 #   Load/Store/Transfer Operations
@@ -2317,9 +2272,10 @@ class MPU():
     def opLDX(self, data):
         if self.osx:
             if self.MODE & self.p:
-                sel = 1
-            else:
-                sel = 0
+                if self.ind: sel = 0
+                else: sel = 1
+            else: sel = 0
+            
             if self.siz:
                 self.sp[sel] = self.wordMask & data
             else:
@@ -2370,7 +2326,7 @@ class MPU():
         return 0
 
     def opTAX(self):
-        if self.osx and not self.lscx:    # TAS
+        if self.osx:    # TAS
             if self.MODE & self.p:
                 stk = 1
             else:
@@ -2543,7 +2499,7 @@ class MPU():
         self.pc = codeFieldAddr
     
     def opPHI(self):
-        if self.osx and not self.lscx:                # Change default stack for PHI
+        if self.osx:                # Change default stack for PHI
             self.osx = False        # change default to S, Sk or Su
         else:
             self.osx = True         # change default to AUX, Sx
@@ -2562,7 +2518,7 @@ class MPU():
             self.ip = self.wordMask & (self.ip + 1)
     
     def opPLI(self):
-        if self.osx and not self.lscx:                # Change default stack for PHI
+        if self.osx:                # Change default stack for PHI
             self.osx = False        # change default to S, Sk or Su
         else:
             self.osx = True         # change default to AUX, Sx
@@ -2575,7 +2531,7 @@ class MPU():
             self.ip = data
     
     def opENT(self):
-        if self.osx and not self.lscx:
+        if self.osx:
             self.osx = False        # use PSP instead of the RSP
             if self.MODE & self.p:
                 sel = 1
