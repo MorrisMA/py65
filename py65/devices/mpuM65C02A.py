@@ -2272,14 +2272,14 @@ class MPU():
     def opLDX(self, data):
         if self.osx:
             if self.MODE & self.p:
-                if self.ind: sel = 0
-                else: sel = 1
-            else: sel = 0
+                if self.ind: stk = 0
+                else: stk = 1
+            else: stk = 0
             
             if self.siz:
-                self.sp[sel] = self.wordMask & data
+                self.sp[stk] = self.wordMask & data
             else:
-                self.sp[sel] = 256 + (self.byteMask & data)
+                self.sp[stk] = 256 + (self.byteMask & data)
         elif self.oax:
             self.a[0] = data
         else:
@@ -2326,18 +2326,16 @@ class MPU():
         return 0
 
     def opTAX(self):
-        if self.osx:    # TAS
+        if self.osx:    # TAS / TAU (only in Kernel mode)
             if self.MODE & self.p:
-                stk = 1
-            else:
-                stk = 0
-            if self.ind and self.MODE & self.p:
-                stk ^= 1
+                if self.ind: stk = 0
+                else: stk = 1
+            else: stk = 0
 
             if self.siz:
                 self.sp[stk] = self.a[0]
             else:
-                self.sp[stk] = self.byteMask & self.a[0]
+                self.sp[stk] = 256 + (self.byteMask & self.a[0])
         else:
             if self.siz:
                 self.x[0] = self.a[0]
@@ -2382,26 +2380,22 @@ class MPU():
 
     def opTXS(self):
         if self.MODE & self.p:
-            stk = 1
-        else:
-            stk = 0
-        if self.ind and self.MODE & self.p:
-            stk ^= 1
+            if self.ind: stk = 0  # TXU (only in Kernel mode)
+            else: stk = 1
+        else: stk = 0
 
         if self.siz:
             self.sp[stk] = self.x[0]
         else:
-            self.sp[stk] = self.byteMask & self.x[0]
+            self.sp[stk] = 256 + (self.byteMask & self.x[0])
 
     def opTSX(self):
         if self.MODE & self.p:
-            stk = 1
-        else:
-            stk = 0
-        if self.ind and self.MODE & self.p:
-            stk ^= 1
+            if self.ind: stk = 0
+            else: stk = 1
+        else: stk = 0
 
-        if self.oax:    # TSA
+        if self.oax:    # TSA / TUA (only in Kernel mode)
             if self.siz:
                 self.a[0] = self.sp[stk]
             else:
