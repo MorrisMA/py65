@@ -2272,8 +2272,7 @@ class MPU():
     def opLDX(self, data):
         if self.osx:
             if self.MODE & self.p:
-                if self.ind: stk = 0
-                else: stk = 1
+                stk = 1
             else: stk = 0
             
             if self.siz:
@@ -2306,8 +2305,7 @@ class MPU():
         if self.osx:
             if self.MODE & self.p:
                 sel = 1
-            else:
-                sel = 0
+            else: sel = 0
             data = self.sp[sel]
         elif self.oax:
             data = self.a[0]
@@ -2465,9 +2463,7 @@ class MPU():
             tmp = '%s' % bin(self.a[0])[2:]
             if len(tmp) < 16:
                 tmp = '0' * (16 - len(tmp)) + tmp
-            # print('--1 REV:', tmp)
             tmp = tmp[::-1]
-            # print('--2 REV:', tmp)
             self.a[0] = self.wordMask & int(tmp, base=2)
         else:                         # ROT A
             tmp = self.a[0]
