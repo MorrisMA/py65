@@ -2324,17 +2324,17 @@ class MPU():
         return 0
 
     def opTAX(self):
-        if self.osx:    # TAS / TAU (only in Kernel mode)
+        if self.osx:    
             if self.MODE & self.p:
                 if self.ind: stk = 0
                 else: stk = 1
             else: stk = 0
 
-            if self.siz:
+            if self.siz:              # TAS / TAU (only in Kernel mode)
                 self.sp[stk] = self.a[0]
             else:
                 self.sp[stk] = 256 + (self.byteMask & self.a[0])
-        else:
+        else:                         # TAX
             if self.siz:
                 self.x[0] = self.a[0]
             else:
@@ -2342,13 +2342,13 @@ class MPU():
             self.FlagsNZ(self.x[0])
 
     def opTXA(self):
-        if self.oay:    # TXY
+        if self.oay:                  # TXY
             if self.siz:
                 self.y[0] = self.x[0]
             else:
                 self.y[0] = self.byteMask & self.x[0]
             self.FlagsNZ(self.y[0])
-        else:
+        else:                         # TXA
             if self.siz:
                 self.a[0] = self.x[0]
             else:
@@ -2363,13 +2363,13 @@ class MPU():
         self.FlagsNZ(self.y[0])
 
     def opTYA(self):
-        if self.oax:    # TYX
+        if self.oax:                  # TYX
             if self.siz:
                 self.x[0] = self.y[0]
             else:
                 self.x[0] = self.byteMask & self.y[0]
             self.FlagsNZ(self.x[0])
-        else:
+        else:                         # TYA
             if self.siz:
                 self.a[0] = self.y[0]
             else:
@@ -2378,11 +2378,11 @@ class MPU():
 
     def opTXS(self):
         if self.MODE & self.p:
-            if self.ind: stk = 0  # TXU (only in Kernel mode)
+            if self.ind: stk = 0
             else: stk = 1
         else: stk = 0
 
-        if self.siz:
+        if self.siz:                  # TXS / TXU (only in Kernel mode)
             self.sp[stk] = self.x[0]
         else:
             self.sp[stk] = 256 + (self.byteMask & self.x[0])
@@ -2393,13 +2393,13 @@ class MPU():
             else: stk = 1
         else: stk = 0
 
-        if self.oax:    # TSA / TUA (only in Kernel mode)
+        if self.oax:                  # TSA / TUA (only in Kernel mode)
             if self.siz:
                 self.a[0] = self.sp[stk]
             else:
                 self.a[0] = self.byteMask & self.sp[stk]
             self.FlagsNZ(self.a[0])
-        else:
+        else:                         # TSX / TUX (only in Kernel mode)
             if self.siz:
                 self.x[0] = self.sp[stk]
             else:
@@ -2876,7 +2876,6 @@ class MPU():
     @instruction(name="CMP", mode='zpI', cycles=5)
     def inst_0xD2(self):
         self.ro_zpI(self.opCMP)
-        self.pc = self.addrMask & (self.pc + 1)
         self.clrPrefixFlags()
 
     @instruction(name="PSH", mode="imm", cycles=4)
@@ -2898,7 +2897,7 @@ class MPU():
         self.ro_ipp(self.opORA)
         self.clrPrefixFlags()
 
-    @instruction(name="ASL", mode="ipp", cycles=3)
+    @instruction(name="ASL", mode="ipp", cycles=4)
     def inst_0x13(self):
         self.rmw_ipp(self.opASLm)
         self.clrPrefixFlags()
@@ -2908,7 +2907,7 @@ class MPU():
         self.ro_ipp(self.opAND)
         self.clrPrefixFlags()
 
-    @instruction(name="ROL", mode="ipp", cycles=3)
+    @instruction(name="ROL", mode="ipp", cycles=4)
     def inst_0x33(self):
         self.rmw_ipp(self.opROLm)
         self.clrPrefixFlags()
@@ -2918,7 +2917,7 @@ class MPU():
         self.ro_ipp(self.opEOR)
         self.clrPrefixFlags()
 
-    @instruction(name="LSR", mode="ipp", cycles=3)
+    @instruction(name="LSR", mode="ipp", cycles=4)
     def inst_0x53(self):
         self.rmw_ipp(self.opLSRm)
         self.clrPrefixFlags()
@@ -2928,7 +2927,7 @@ class MPU():
         self.ro_ipp(self.opADD)
         self.clrPrefixFlags()
 
-    @instruction(name="ROR", mode="ipp", cycles=3)
+    @instruction(name="ROR", mode="ipp", cycles=4)
     def inst_0x73(self):
         self.rmw_ipp(self.opRORm)
         self.clrPrefixFlags()
@@ -2938,7 +2937,7 @@ class MPU():
         self.wo_ipp(self.opSTA)
         self.clrPrefixFlags()
 
-    @instruction(name="TSB", mode="ipp", cycles=3)
+    @instruction(name="TSB", mode="ipp", cycles=4)
     def inst_0x93(self):
         self.rmw_ipp(self.opTSB)
         self.clrPrefixFlags()
@@ -2948,7 +2947,7 @@ class MPU():
         self.ro_ipp(self.opLDA)
         self.clrPrefixFlags()
 
-    @instruction(name="TRB", mode="ipp", cycles=3)
+    @instruction(name="TRB", mode="ipp", cycles=4)
     def inst_0xB3(self):
         self.rmw_ipp(self.opTRB)
         self.clrPrefixFlags()
@@ -2958,7 +2957,7 @@ class MPU():
         self.ro_ipp(self.opCMPm)
         self.clrPrefixFlags()
 
-    @instruction(name="DEC", mode="ipp", cycles=3)
+    @instruction(name="DEC", mode="ipp", cycles=4)
     def inst_0xD3(self):
         self.rmw_ipp(self.opDECm)
         self.clrPrefixFlags()
@@ -2968,7 +2967,7 @@ class MPU():
         self.ro_ipp(self.opSUB)
         self.clrPrefixFlags()
 
-    @instruction(name="INC", mode="ipp", cycles=3)
+    @instruction(name="INC", mode="ipp", cycles=4)
     def inst_0xF3(self):
         self.rmw_ipp(self.opINCm)
         self.clrPrefixFlags()
@@ -3053,7 +3052,7 @@ class MPU():
         self.ro_zp(self.opCPX)
         self.clrPrefixFlags()
 
-    @instruction(name="PUL", mode="zp", cycles=5)
+    @instruction(name="PUL", mode="zp", cycles=4)
     def inst_0xF4(self):
         self.opPUL_zp()
         self.clrPrefixFlags()
@@ -3463,7 +3462,7 @@ class MPU():
         self.imm(self.BTI)
         self.clrPrefixFlags()
 
-    @instruction(name="STA", mode="absY", cycles=5)
+    @instruction(name="STA", mode="absY", cycles=4)
     def inst_0x99(self):
         self.wo_absY(self.opSTA)
         self.clrPrefixFlags()
@@ -3706,7 +3705,7 @@ class MPU():
         _, self.pc = self.absI()
         self.clrPrefixFlags()
 
-    @instruction(name="JMP", mode="absXI", cycles=6)
+    @instruction(name="JMP", mode="absXI", cycles=5)
     def inst_0x7C(self):
         _, self.pc = self.absXI()
         self.clrPrefixFlags()
@@ -3736,7 +3735,7 @@ class MPU():
         self.abs(self.opCPY)
         self.clrPrefixFlags()
 
-    @instruction(name="PSH", mode="abs", cycles=5)
+    @instruction(name="PSH", mode="abs", cycles=4)
     def inst_0xDC(self):
         self.opPSH_abs()
         self.clrPrefixFlags()
@@ -3747,7 +3746,7 @@ class MPU():
         self.ro_abs(self.opCPX)
         self.clrPrefixFlags()
 
-    @instruction(name="PUL", mode="abs", cycles=6)
+    @instruction(name="PUL", mode="abs", cycles=5)
     def inst_0xFC(self):
         self.opPUL_abs()
         self.clrPrefixFlags()
@@ -3927,97 +3926,97 @@ class MPU():
 #   Column F
 #
 
-    @instruction(name="BBR0", mode="zprel", cycles=5)
+    @instruction(name="BBR0", mode="zprel", cycles=4)
     def inst_0x0F(self):
         self.bitMask = 0xFE
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBR1", mode="zprel", cycles=5)
+    @instruction(name="BBR1", mode="zprel", cycles=4)
     def inst_0x1F(self):
         self.bitMask = 0xFD
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBR2", mode="zprel", cycles=5)
+    @instruction(name="BBR2", mode="zprel", cycles=4)
     def inst_0x2F(self):
         self.bitMask = 0xFB
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBR3", mode="zprel", cycles=5)
+    @instruction(name="BBR3", mode="zprel", cycles=4)
     def inst_0x3F(self):
         self.bitMask = 0xF7
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBR4", mode="zprel", cycles=5)
+    @instruction(name="BBR4", mode="zprel", cycles=4)
     def inst_0x4F(self):
         self.bitMask = 0xEF
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBR5", mode="zprel", cycles=5)
+    @instruction(name="BBR5", mode="zprel", cycles=4)
     def inst_0x5F(self):
         self.bitMask = 0xDF
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBR6", mode="zprel", cycles=5)
+    @instruction(name="BBR6", mode="zprel", cycles=4)
     def inst_0x6F(self):
         self.bitMask = 0xBF
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBR7", mode="zprel", cycles=5)
+    @instruction(name="BBR7", mode="zprel", cycles=4)
     def inst_0x7F(self):
         self.bitMask = 0xEF
         self.zprel(self.opBBRx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS0", mode="zprel", cycles=5)
+    @instruction(name="BBS0", mode="zprel", cycles=4)
     def inst_0x8F(self):
         self.bitMask = 0x01
         self.zprel(self.opBBSx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS1", mode="zprel", cycles=5)
+    @instruction(name="BBS1", mode="zprel", cycles=4)
     def inst_0x9F(self):
         self.bitMask = 0x02
         self.zprel(self.opBBSx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS2", mode="zprel", cycles=5)
+    @instruction(name="BBS2", mode="zprel", cycles=4)
     def inst_0xAF(self):
         self.bitMask = 0x04
         self.zprel(self.opBBSx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS3", mode="zprel", cycles=5)
+    @instruction(name="BBS3", mode="zprel", cycles=4)
     def inst_0xBF(self):
         self.bitMask = 0x08
         self.zprel(self.opBBSx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS4", mode="zprel", cycles=5)
+    @instruction(name="BBS4", mode="zprel", cycles=4)
     def inst_0xCF(self):
         self.bitMask = 0x10
         self.zprel(self.opBBSx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS5", mode="zprel", cycles=5)
+    @instruction(name="BBS5", mode="zprel", cycles=4)
     def inst_0xDF(self):
         self.bitMask = 0x20
         self.zprel(self.opBBSx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS6", mode="zprel", cycles=5)
+    @instruction(name="BBS6", mode="zprel", cycles=4)
     def inst_0xEF(self):
         self.bitMask = 0x40
         self.zprel(self.opBBSx)
         self.clrPrefixFlags()
 
-    @instruction(name="BBS7", mode="zprel", cycles=5)
+    @instruction(name="BBS7", mode="zprel", cycles=4)
     def inst_0xFF(self):
         self.bitMask = 0x80
         self.zprel(self.opBBSx)
