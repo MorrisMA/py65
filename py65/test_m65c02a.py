@@ -1,8 +1,12 @@
 import unittest
-import sys
 import os
+import sys
+
+sys.path.append(os.getcwd())
+
 import tempfile
-from py65.monitor import Monitor
+#from py65.monitor import Monitor
+from monitor import Monitor
 
 try:
     from StringIO import StringIO
@@ -152,7 +156,7 @@ class MonitorTests(unittest.TestCase):
         mon.do_assemble('c000 lda #$ab')
 
         out = stdout.getvalue()
-        self.assertEqual("$c000  a9 ab     LDA #$ab\n", out)
+        self.assertEqual("$C000  A9 AB     LDA #$AB\n", out)
 
     def test_do_assemble_parses_start_address_label(self):
         stdout = StringIO()
@@ -182,10 +186,10 @@ class MonitorTests(unittest.TestCase):
     def test_do_assemble_shows_overflow_error(self):
         stdout = StringIO()
         mon = Monitor(stdout=stdout)
-        mon.do_assemble('c000 lda #$fff')
+        mon.do_assemble('c000 lda #$fffff')
 
         out = stdout.getvalue()
-        self.assertEqual("Overflow error: c000 lda #$fff\n", out)
+        self.assertEqual("Overflow error: c000 lda #$fffff\n", out)
 
     def test_do_assemble_passes_addr_for_relative_branch_calc(self):
         stdout = StringIO()
@@ -263,7 +267,8 @@ class MonitorTests(unittest.TestCase):
         mon.do_cycles("")
 
         out = stdout.getvalue()
-        self.assertEqual(out, "0\n")
+        cnt = out.split(',')[0].split()[2]
+        self.assertEqual(cnt, "0")
 
     def test_do_cycles_shows_count_after_step(self):
         stdout = StringIO()
@@ -273,7 +278,8 @@ class MonitorTests(unittest.TestCase):
         mon.do_cycles("")
 
         out = stdout.getvalue()
-        self.assertEqual(out, "2\n")
+        cnt = out.split(',')[0].split()[2]
+        self.assertEqual(cnt, "1")
 
     # delete_label
 
@@ -340,7 +346,7 @@ class MonitorTests(unittest.TestCase):
         mon.do_disassemble("c000")
 
         out = stdout.getvalue()
-        disasm = "$c000  ea        NOP\n"
+        disasm = "$C000  EA        NOP\n"
         self.assertEqual(out, disasm)
 
     def test_disassemble_will_disassemble_an_address_range(self):
@@ -352,7 +358,7 @@ class MonitorTests(unittest.TestCase):
         mon.do_disassemble("c000:c001")
 
         out = stdout.getvalue()
-        disasm = "$c000  ea        NOP\n$c001  ea        NOP\n"
+        disasm = "$C000  EA        NOP\n$C001  EA        NOP\n"
         self.assertEqual(out, disasm)
 
     def test_disassemble_wraps_an_instruction_around_memory(self):
@@ -364,7 +370,7 @@ class MonitorTests(unittest.TestCase):
         mon.do_disassemble("ffff")
 
         out = stdout.getvalue()
-        disasm = "$ffff  20 d2 ff  JSR $ffd2\n"
+        disasm = "$FFFF  20 D2 FF  JSR $FFD2\n"
         self.assertEqual(out, disasm)
 
     def test_disassemble_wraps_disassembly_list_around_memory(self):
@@ -379,9 +385,9 @@ class MonitorTests(unittest.TestCase):
         mon._mpu.memory[0x0005] = 0xEA  # => NOP
         mon.do_disassemble("ffff:5")
         out = stdout.getvalue()
-        disasm = ("$ffff  20 d2 ff  JSR $ffd2\n"
-                  "$0002  20 e4 ff  JSR $ffe4\n"
-                  "$0005  ea        NOP\n")
+        disasm = ("$FFFF  20 D2 FF  JSR $FFD2\n"
+                  "$0002  20 E4 FF  JSR $FFE4\n"
+                  "$0005  EA        NOP\n")
         self.assertEqual(out, disasm)
 
     # fill
@@ -426,7 +432,7 @@ class MonitorTests(unittest.TestCase):
 
         self.assertEqual(0xAA, mon._mpu.memory[0xc000])
         out = stdout.getvalue()
-        self.assertTrue(out.startswith('Wrote +1 bytes from $c000 to $c000'))
+        self.assertTrue(out.startswith('Wrote +1 bytes from $C000 to $C000'))
 
     def test_do_fill_will_fill_an_address_range_with_a_single_byte(self):
         stdout = StringIO()
@@ -440,7 +446,7 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(0xAA, mon._mpu.memory[0xc001])
         self.assertEqual(0x00, mon._mpu.memory[0xc002])
         out = stdout.getvalue()
-        self.assertTrue(out.startswith('Wrote +2 bytes from $c000 to $c001'))
+        self.assertTrue(out.startswith('Wrote +2 bytes from $C000 to $C001'))
 
     def test_do_fill_will_fill_an_address_range_with_byte_sequence(self):
         stdout = StringIO()
@@ -456,7 +462,7 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(0xAA, mon._mpu.memory[0xc002])
         self.assertEqual(0xBB, mon._mpu.memory[0xc003])
         out = stdout.getvalue()
-        self.assertTrue(out.startswith('Wrote +4 bytes from $c000 to $c003'))
+        self.assertTrue(out.startswith('Wrote +4 bytes from $C000 to $C003'))
 
     def test_do_fill_bad_label_in_address_shows_error(self):
         stdout = StringIO()
@@ -614,7 +620,7 @@ class MonitorTests(unittest.TestCase):
             f.close()
 
             mon.do_load("'%s' a600" % filename)
-            self.assertEqual('Wrote +3 bytes from $a600 to $a602\n',
+            self.assertEqual('Wrote +3 bytes from $A600 to $A602\n',
                              stdout.getvalue())
             self.assertEqual([0xAA, 0xBB, 0xCC],
                              mon._mpu.memory[0xA600:0xA603])
@@ -661,7 +667,7 @@ class MonitorTests(unittest.TestCase):
         mon.do_mem('c000')
 
         out = stdout.getvalue()
-        self.assertEqual('c000:  aa\n', out)
+        self.assertEqual('C000:  AA\n', out)
 
     def test_do_mem_shows_memory_for_an_address_range(self):
         stdout = StringIO()
@@ -672,7 +678,7 @@ class MonitorTests(unittest.TestCase):
         mon.do_mem('c000:c002')
 
         out = stdout.getvalue()
-        self.assertEqual('c000:  aa  bb  cc\n', out)
+        self.assertEqual('C000:  AA  BB  CC\n', out)
 
     def test_do_mem_wraps_at_terminal_width(self):
         stdout = StringIO()
@@ -681,8 +687,8 @@ class MonitorTests(unittest.TestCase):
         mon.do_mem('c000:c003')
 
         out = stdout.getvalue()
-        self.assertEqual('c000:  00  00\n'
-                         'c002:  00  00\n', out)
+        self.assertEqual('C000:  00  00\n'
+                         'C002:  00  00\n', out)
 
     # mpu
 
@@ -887,19 +893,19 @@ class MonitorTests(unittest.TestCase):
         mon.do_registers('x=42')
         out = stdout.getvalue()
         self.assertEqual("", out)
-        self.assertEqual(0x42, mon._mpu.x)
+        self.assertEqual(0x42, mon._mpu.x[0])
 
     def test_registers_updates_all_registers(self):
         stdout = StringIO()
         mon = Monitor(stdout=stdout)
-        mon.do_registers('a=42,x=43,y=44,p=45, sp=46, pc=4600')
+        mon.do_registers('a=42, x=43, y=44, p=45, sp=46, pc=4600')
         out = stdout.getvalue()
         self.assertEqual("", out)
-        self.assertEqual(0x42, mon._mpu.a)
-        self.assertEqual(0x43, mon._mpu.x)
-        self.assertEqual(0x44, mon._mpu.y)
+        self.assertEqual(0x42, mon._mpu.a[0])
+        self.assertEqual(0x43, mon._mpu.x[0])
+        self.assertEqual(0x44, mon._mpu.y[0])
         self.assertEqual(0x45, mon._mpu.p)
-        self.assertEqual(0x46, mon._mpu.sp)
+        self.assertEqual(0x46, mon._mpu.sp[0])
         self.assertEqual(0x4600, mon._mpu.pc)
 
     def test_registers_pc_overflow(self):
@@ -913,9 +919,9 @@ class MonitorTests(unittest.TestCase):
     def test_registers_a_overflow(self):
         stdout = StringIO()
         mon = Monitor(stdout=stdout)
-        mon.do_registers('a=100')
+        mon.do_registers('a=10000')
         out = stdout.getvalue()
-        expected = "Overflow: '100' too wide for register 'a'"
+        expected = "Overflow: '10000' too wide for register 'a'"
         self.assertTrue(out.startswith(expected))
 
     def test_help_registers(self):
@@ -1079,7 +1085,7 @@ class MonitorTests(unittest.TestCase):
         mon._address_parser.labels = {'chrin': 0xffc4, 'chrout': 0xffd2}
         mon.do_show_labels('')
         out = stdout.getvalue()
-        self.assertEqual("ffc4: chrin\nffd2: chrout\n", out)
+        self.assertEqual("FFC4: chrin\nFFD2: chrout\n", out)
 
     def test_help_show_labels(self):
         stdout = StringIO()
@@ -1087,7 +1093,7 @@ class MonitorTests(unittest.TestCase):
         mon._address_parser.labels = {'chrin': 0xffc4, 'chrout': 0xffd2}
         mon.do_show_labels('')
         out = stdout.getvalue()
-        self.assertEqual("ffc4: chrin\nffd2: chrout\n", out)
+        self.assertEqual("FFC4: chrin\nFFD2: chrout\n", out)
 
     # version
 

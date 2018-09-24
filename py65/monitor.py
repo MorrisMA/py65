@@ -46,8 +46,18 @@ class Monitor(cmd.Cmd):
     Microprocessors = {'6502': NMOS6502, '65C02': CMOS65C02,
                        '65Org16': V65Org16, 'M65C02A': M65C02A}
 
-    def __init__(self, mpu_type=NMOS6502, completekey='tab', stdin=None,
-                 stdout=None, argv=None, memory=None, putc_addr=0xF001, getc_addr=0xF004):
+#    def __init__(self, mpu_type=NMOS6502, completekey='tab', stdin=None,
+#    stdout=None, argv=None, memory=None, putc_addr=0xF001, getc_addr=0xF004):
+    def __init__(self,
+                 mpu_type=NMOS6502,
+                 completekey='tab',
+                 stdin=None,
+                 stdout=None,
+#                 argv=None,
+                 argv=['monitor.py', '-m', 'M65C02A',],
+                 memory=None,
+                 putc_addr=0xF001,
+                 getc_addr=0xF004 ):
         self.mpu_type = mpu_type
         self.memory = memory
         self.putc_addr = putc_addr
@@ -65,7 +75,8 @@ class Monitor(cmd.Cmd):
     def _parse_args(self, argv):
         try:
             shortopts = 'hi:o:m:l:r:g:'
-            longopts = ['help', 'mpu=', 'input=', 'output=', 'load=', 'rom=', 'goto=']
+            longopts = ['help', 'mpu=',
+                        'input=', 'output=', 'load=', 'rom=', 'goto=']
             options, args = getopt.getopt(argv[1:], shortopts, longopts)
         except getopt.GetoptError as exc:
             self._output(exc.args[0])
@@ -470,9 +481,7 @@ class Monitor(cmd.Cmd):
 
         self._mpu.pc = self._address_parser.number(args)
         brks = [0x00]  # BRK
-        self._mpu.dbg = True
         self._run(stopcodes=brks)
-        self._mpu.dbg = False
 
     def _run(self, stopcodes):
         stopcodes = set(stopcodes)
@@ -523,11 +532,16 @@ class Monitor(cmd.Cmd):
         outString += ", Data Rd = %d" % self._mpu.datMemRdCycles
         outString += ", Data Wr = %d" % self._mpu.datMemWrCycles
         outString += ", Dummy Cycles = %d\n" % self._mpu.dummyCycles
-        outString += "  CPI = %4.2f" % (float(self._mpu.processorCycles) \
-                                          / self._mpu.numInstructions)
-        outString += ", Avg Inst Len = %4.2f\n" % \
-                       (float(self._mpu.pgmMemRdCycles) \
-                        / self._mpu.numInstructions)
+        if self._mpu.numInstructions == 0:
+            outString += "  CPI =  0.00"
+            outString += ", Avg Inst Len = 0.00\n"
+        else:
+            outString += "  CPI = %4.2f" % \
+                           (float(self._mpu.processorCycles) \
+                            / self._mpu.numInstructions )
+            outString += ", Avg Inst Len = %4.2f\n" % \
+                           (float(self._mpu.pgmMemRdCycles) \
+                            / self._mpu.numInstructions )
         self._output(outString)
 
     def do_radix(self, args):
@@ -580,7 +594,16 @@ class Monitor(cmd.Cmd):
             return self._output("Syntax error: %s" % args)
 
         for register, value in pairs:
-            if register not in ('pc', 'sp', 'a', 'x', 'y', 'p'):
+            if register not in ('pc',
+                                'a', 'at', 'an', 'ab',
+                                'x', 'xt', 'xn', 'xb',
+                                'y', 'yt', 'yn', 'yb',
+                                'ip',
+                                'wp',
+                                'sp', 's', 'sk', 'su',
+                                'p',
+                                'd',
+                                'f', ):
                 self._output("Invalid register: %s" % register)
             else:
                 try:
@@ -594,26 +617,76 @@ class Monitor(cmd.Cmd):
                     continue
 
                 if self._mpu.name.lower() == 'm65c02a':
-                    if register in ['a', 'x', 'y','sp', 'pc', 'p']:
-                        if register == 'a':
+                    if register in ['pc',
+                                    'a', 'at', 'an', 'ab',
+                                    'x', 'xt', 'xn', 'xb',
+                                    'y', 'yt', 'yn', 'yb',
+                                    'ip',
+                                    'wp',
+                                    'sp', 's', 'sk', 'su',
+                                    'p',
+                                    'd',
+                                    'f', ]:
+                        if register in ['pc']:
+                            self._mpu.pc = intval
+                        elif register in ['a', 'at']:
                             self._mpu.a[0] = intval
-                        elif register == 'x':
+                        elif register in ['an']:
+                            self._mpu.a[1] = intval
+                        elif register in ['ab']:
+                            self._mpu.a[2] = intval
+                        elif register in ['x', 'xt']:
                             self._mpu.x[0] = intval
-                        elif register == 'y':
+                        elif register in ['xn']:
+                            self._mpu.x[1] = intval
+                        elif register in ['xb']:
+                            self._mpu.x[2] = intval
+                        elif register in ['y', 'yt']:
                             self._mpu.y[0] = intval
-                        elif register == 'sp':
+                        elif register in ['yn']:
+                            self._mpu.y[1] = intval
+                        elif register in ['yb']:
+                            self._mpu.y[2] = intval
+                        elif register in ['ip']:
+                            self._mpu.ip = intval
+                        elif register in ['wp']:
+                            self._mpu.wp = intval
+                        elif register in ['sp', 's']:
                             if self._mpu.p & self._mpu.MODE:
                                 self._mpu.sp[1] = intval
                             else:
                                 self._mpu.sp[0] = intval
-                        elif register == 'pc':
-                            self._mpu.pc = intval
-                        elif register == 'p':
+                        elif register in ['sk']:
+                            self._mpu.sp[1] = intval
+                        elif register in ['su']:
+                            self._mpu.sp[0] = intval
+                        elif register in ['p']:
                             if intval != (intval & self.byteMask):
                                 msg = "Overflow: %r too wide for register %r"
                                 self._output(msg % (value, register))
                             else:
                                 self._mpu.p = intval
+                        elif register in ['d']:
+                            self._mpu.dbg = bool(intval & 1)
+                        elif register in ['f']:
+                            self._mpu.siz = self._mpu.ind = False
+                            self._mpu.osx = self._mpu.oax = False
+                            self._mpu.oay = False
+                            if intval & 0x0001:
+                                self._mpu.siz = True
+                            if intval & 0x0002:
+                                self._mpu.ind = True
+                            if intval & 0x0004 and not intval & 0x0008:
+                                self._mpu.osx = True
+                            elif intval & 0x0008 and not intval & 0x0004:
+                                self._mpu.oax = True
+                            else:
+                                msg = "Error: Attempt to set OSX and OAX: %r"
+                                self._output(msg % (value))
+                            if intval & 0x0010:
+                                self._mpu.oay= True
+                        elif register in ['d']:
+                            self._mpu.dbg = bool(intval & 1)
                 else:
                     if register != 'pc':
                         if intval != (intval & self.byteMask):

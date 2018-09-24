@@ -89,8 +89,8 @@ class MPU():
     def reprformat(self):
         return ("%s PC   AC   XR   YR   SP   VM  NVMBDIZC\n"
                 "%s: %04X %04X %04X %04X %04X %04X %s\n"
-                "%s  %04X %04X %04X %04X %04X\n"
-                "%s  %04X %04X %04X")
+                "%s  %04X %04X %04X %04X %04X DL YXSIZ\n"
+                "%s  %04X %04X %04X           %d%d %d%d%d%d%d\n")
 
     def __repr__(self):
         flags = itoa(self.p, 2).rjust(self.BYTE_WIDTH, '0')
@@ -116,16 +116,23 @@ class MPU():
                                     indent[2],
                                     self.a[2],  # ABOS
                                     self.x[2],  # XBOS
-                                    self.y[2] ) # YBOS
+                                    self.y[2],  # YBOS
+                                    int(self.dbg),
+                                    int(self.lscx),
+                                    int(self.oay),
+                                    int(self.oax),
+                                    int(self.osx),
+                                    int(self.ind),
+                                    int(self.siz) )
 
     # Fetch and Execute instruction
 
     def step(self):
         def getInstruction(self):
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
-            print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
+            if self.dbg:
+                print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
             pc = self.addrMask & (self.pc + 1)
-#            if instructCode in (139, 155, 171, 187, 203, 219, 235, 251):
             if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
                 pass 
             else: self.numInstructions += 1
@@ -3659,12 +3666,10 @@ class MPU():
     def inst_0xEB(self):
         self.oax = True
         self.osx = False
-        self.oay = False
 
     @instruction(name="OAY", mode="imp", cycles=1)
     def inst_0xFB(self):
         self.oay = True
-        self.oax = False
 
 #
 #   Column C
