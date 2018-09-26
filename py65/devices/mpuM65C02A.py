@@ -35,7 +35,7 @@ class MPU():
     ip = int()
     wp = int()
     pc = int()
-    p  = int()
+    p  = int() | BREAK
 
     # declare Prefix Byte Boolean Flags Registers
 
@@ -93,7 +93,7 @@ class MPU():
                 "%s  %04X %04X %04X           %d%d %d%d%d%d%d\n")
 
     def __repr__(self):
-        flags = itoa(self.p, 2).rjust(self.BYTE_WIDTH, '0')
+        flags = itoa(self.p | self.BREAK, 2).rjust(self.BYTE_WIDTH, '0')
         indent = [' ' * (len(self.name) + 2),
                   ' ' * (len(self.name) + 5),
                   ' ' * (len(self.name) + 5)]

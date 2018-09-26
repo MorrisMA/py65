@@ -490,6 +490,7 @@ class Monitor(cmd.Cmd):
         mem = self._mpu.memory
         
         # vm status
+        
         self._mpu.excycles = 0
         self._mpu.addcycles = False
         self._mpu.processorCycles = 0
@@ -665,7 +666,7 @@ class Monitor(cmd.Cmd):
                                 msg = "Overflow: %r too wide for register %r"
                                 self._output(msg % (value, register))
                             else:
-                                self._mpu.p = intval
+                                self._mpu.p = intval | self._mpu.BREAK
                         elif register in ['d']:
                             self._mpu.dbg = bool(intval & 1)
                         elif register in ['f']:
