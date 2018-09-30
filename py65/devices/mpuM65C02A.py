@@ -3713,6 +3713,7 @@ class MPU():
     @instruction(name="OAY", mode="imp", cycles=1)
     def inst_0xFB(self):
         self.oay = True
+        self.oax = False
 
 #
 #   Column C
