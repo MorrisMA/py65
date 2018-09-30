@@ -48,6 +48,7 @@ class MPU():
     lscx = False  # override osx for the LDX/STX/CPX zp/abs instructions
 
     dbg  = False
+    dbgE = False
 
     def __init__(self, memory=None, pc=0x0200):
         # config
@@ -57,6 +58,7 @@ class MPU():
         self.addrMask = ((1 << self.ADDR_WIDTH) - 1)
         self.hiByteMask   = (self.byteMask << self.BYTE_WIDTH)
         self.addrHighMask = self.hiByteMask
+        self.signExtend   = self.hiByteMask
         self.spBase = 1 << self.BYTE_WIDTH
 
         # vm status
@@ -117,7 +119,7 @@ class MPU():
                                     self.a[2],  # ABOS
                                     self.x[2],  # XBOS
                                     self.y[2],  # YBOS
-                                    int(self.dbg),
+                                    int(self.dbgE),
                                     int(self.lscx),
                                     int(self.oay),
                                     int(self.oax),
@@ -130,7 +132,7 @@ class MPU():
     def step(self):
         def getInstruction(self):
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
-            if self.dbg:
+            if self.dbg & self.dbgE:
                 print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
             pc = self.addrMask & (self.pc + 1)
             if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
@@ -200,7 +202,7 @@ class MPU():
 
     def rdPM(self):
         tmp = self.byteMask & self.memory[self.addrMask & self.pc]
-        if self.dbg:
+        if self.dbg & self.dbgE:
             print(' rdPM:', '%02X <= mem[%04X]' % (tmp, self.pc))
         self.pc = self.addrMask & (self.pc + 1)
         self.processorCycles += 1; self.pgmMemRdCycles += 1
@@ -208,19 +210,19 @@ class MPU():
 
     def rdDM(self, addr):
         tmp = self.byteMask & self.memory[addr]
-        if self.dbg:
+        if self.dbg & self.dbgE:
             print(' rdDM:', '%02X <= mem[%04X]' % (tmp, addr))
         self.processorCycles += 1; self.datMemRdCycles += 1
         return tmp
 
     def wrDM(self, addr, data):
-        if self.dbg:
+        if self.dbg & self.dbgE:
             print(' wrDM:', '%02X => mem[%04X]' % (self.byteMask & data, addr))
         self.memory[addr] = self.byteMask & data
         self.processorCycles += 1; self.datMemWrCycles += 1
 
     def rwDM(self, addr):
-        if self.dbg:
+        if self.dbg & self.dbgE:
             print(' rwDM:', '-- <> mem[%04X]' % (addr))
         self.processorCycles += 1; self.dummyCycles += 1
 
@@ -233,13 +235,19 @@ class MPU():
     # Addressing modes
 
     def imm(self, op):
-        data = self.rdPM()
         if self.siz:
+            data  = self.rdPM()
             data += self.rdPM() << 8
+        else:
+            data  = self.rdPM()
+            if data & self.NEGATIVE:
+                data |= self.signExtend
         return op(data)
 
     def ro_zp(self, op):
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -267,6 +275,8 @@ class MPU():
 
     def wo_zp(self, reg):
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         data = reg()
         mask = self.byteMask
         hiAddr = 0
@@ -295,6 +305,8 @@ class MPU():
 
     def rmw_zp(self, op):
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -337,6 +349,8 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         if index < 512:                     # page 0/1 + unsigned(offset)
             hiAddr = (self.addrHighMask & index)
             addr = hiAddr + (mask & (index + addr))
@@ -377,6 +391,8 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         if index < 512:                     # page 0/1 + unsigned(offset)
             hiAddr = (self.addrHighMask & index)
             mask = self.byteMask
@@ -417,6 +433,8 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = self.addrHighMask & index
         if index < 512:                     # page 0/1 + unsigned(offset)
@@ -457,6 +475,8 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.ind:
@@ -495,6 +515,8 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.ind:
@@ -531,6 +553,8 @@ class MPU():
 
     def ro_zpI(self, op):
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -561,6 +585,8 @@ class MPU():
 
     def wo_zpI(self, reg):
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -602,6 +628,8 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         if index < 512:                     # stk/zero page + unsigned(offset)
             hiAddr = (index & self.addrHighMask)
@@ -648,6 +676,8 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         if index < 512:                   # stk/zero page + unsigned(offset)
             hiAddr = (index & self.addrHighMask)
@@ -690,6 +720,8 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -726,6 +758,8 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -1031,8 +1065,10 @@ class MPU():
     # These routines return addresses. Used with PUL zp, JSR/JMP/PUL abs
     #
 
-    def zp(self):
+    def _zp(self):
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -1050,7 +1086,7 @@ class MPU():
             hiAddr = 0
         return hiAddr, mask, addr
     
-    def abs(self):
+    def _abs(self):
         tmp1 = self.rdPM()
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
@@ -1068,7 +1104,7 @@ class MPU():
             addr = (tmp2 << 8) + tmp1
         return mask, addr
 
-    def absI(self):
+    def _absI(self):
         tmp1 = self.rdPM()
         tmp2 = self.rdPM()
         addr = (tmp2 << 8) + tmp1
@@ -1090,7 +1126,7 @@ class MPU():
             addr = (tmp2 << 8) + tmp1
         return mask, addr
 
-    def absXI(self):
+    def _absXI(self):
         if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
@@ -1127,11 +1163,9 @@ class MPU():
             tmp2 = self.rdPM()
             offset = (tmp2 << 8) + tmp1
         else:
-            tmp1 = self.rdPM()
-            tmp2 = 0
-            if self.NEGATIVE & tmp1:
-                tmp2 = self.hiByteMask
-            offset = tmp2 + tmp1
+            offset = self.rdPM()
+            if offset & self.NEGATIVE:
+                offset |= self.signExtend
         op(offset)
 
     #
@@ -1150,6 +1184,8 @@ class MPU():
 
     def zprel(self, op):
         addr = self.rdPM()
+        if addr & self.NEGATIVE:
+            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -1390,7 +1426,7 @@ class MPU():
 
     def opJSR(self):
         osx = self.osx; self.osx = False  # jsr abs,S not supported
-        mask, addr = self.abs()
+        mask, addr = self._abs()
         self.osx = osx
         self.siz = True
         self.PUSH(mask & (self.pc - 1))
@@ -1409,7 +1445,7 @@ class MPU():
         self.pc = self.addrMask & (self.PULL() + 1)
         
 #
-#   Branch Operations
+#   Jmp/Branch Operations
 #
 
     def opBPL(self, offset):  # ((SIZ) ? BGT : BPL)
@@ -1640,14 +1676,32 @@ class MPU():
 #   Shift Unit Operations
 #
 
+    def _getAluReg(self):
+        if self.oax:
+            reg = self.x[0]
+        elif self.oay:
+            reg = self.y[0]
+        else:
+            reg = self.a[0]       
+        return reg
+
+    def _putAluReg(self, data):
+        if self.oax:
+            self.x[0] = data
+        elif self.oay:
+            self.y[0] = data
+        else:
+            self.a[0] = data         
+
     def opASLr(self):
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
-        if self.oax:
-            regVal = self.x[0]
-        elif self.oay:
-            regVal = self.y[0]
-        else:
-            regVal = self.a[0]
+#        if self.oax:
+#            regVal = self.x[0]
+#        elif self.oay:
+#            regVal = self.y[0]
+#        else:
+#            regVal = self.a[0]
+        regVal = self.getAluReg()
         cin = self.CARRY & self.p
 
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
@@ -1662,25 +1716,23 @@ class MPU():
                 regVal = self.wordMask  & ((regVal << 1) | cin)
             else:
                 regVal = self.wordMask  &  (regVal << 1)
-
-            if regVal == 0:
-                self.p |= self.ZERO
         else:
             self.p |= self.NEGATIVE & regVal
             self.p |= self.CARRY & (regVal >> 7)
 
             regVal = self.byteMask & (regVal << 1)
 
-            if regVal == 0:
-                self.p |= self.ZERO
+        if regVal == 0:
+            self.p |= self.ZERO
 
-        if self.oax:
-            self.x[0] = regVal
-        elif self.oay:
-            self.y[0] = regVal
-        else:
-            self.a[0] = regVal
-
+#        if self.oax:
+#            self.x[0] = regVal
+#        elif self.oay:
+#            self.y[0] = regVal
+#        else:
+#            self.a[0] = regVal
+        self._putAluReg(regVal)
+        
     def opASLm(self, data):
         memVal = int(data)
 
@@ -1710,12 +1762,13 @@ class MPU():
 
     def opROLr(self):
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
-        if self.oax:
-            regVal = self.x[0]
-        elif self.oay:
-            regVal = self.y[0]
-        else:
-            regVal = self.a[0]
+#        if self.oax:
+#            regVal = self.x[0]
+#        elif self.oay:
+#            regVal = self.y[0]
+#        else:
+#            regVal = self.a[0]
+        regVal = self._getAluReg()
 
         if self.siz:
             if self.CARRY & self.p:
@@ -1745,13 +1798,14 @@ class MPU():
 
         self.FlagsNZ(regVal)
 
-        if self.oax:
-            self.x[0] = regVal
-        elif self.oay:
-            self.y[0] = regVal
-        else:
-            self.a[0] = regVal
-
+#        if self.oax:
+#            self.x[0] = regVal
+#        elif self.oay:
+#            self.y[0] = regVal
+#        else:
+#            self.a[0] = regVal
+        self._putAluReg(regVal)
+        
     def opROLm(self, data):
         memVal = int(data)
 
@@ -1787,13 +1841,14 @@ class MPU():
         return memVal
 
     def opLSRr(self):
-        if self.oax:
-            regVal = self.x[0]
-        elif self.oay:
-            regVal = self.y[0]
-        else:
-            regVal = self.a[0]
-
+#        if self.oax:
+#            regVal = self.x[0]
+#        elif self.oay:
+#            regVal = self.y[0]
+#        else:
+#            regVal = self.a[0]
+        regVal = self._getAluReg()
+        
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
         self.p |= self.CARRY & regVal
 
@@ -1837,13 +1892,14 @@ class MPU():
         return memVal
 
     def opRORr(self):
-        if self.oax:
-            regVal = self.x[0]
-        elif self.oay:
-            regVal = self.y[0]
-        else:
-            regVal = self.a[0]
-
+#        if self.oax:
+#            regVal = self.x[0]
+#        elif self.oay:
+#            regVal = self.y[0]
+#        else:
+#            regVal = self.a[0]
+        regVal = self._getAluReg()
+        
         if self.CARRY & self.p:
             if self.CARRY & regVal:
                 pass
@@ -1860,15 +1916,16 @@ class MPU():
                 regVal = (self.wordMask & regVal) >> 1
             else:
                 regVal = (self.byteMask & regVal) >> 1
+        
         self.FlagsNZ(regVal)
-
-        if self.oax:
-            self.x[0] = regVal
-        elif self.oay:
-            self.y[0] = regVal
-        else:
-            self.a[0] = regVal
-
+#        if self.oax:
+#            self.x[0] = regVal
+#        elif self.oay:
+#            self.y[0] = regVal
+#        else:
+#            self.a[0] = regVal
+        self._putAluReg(regVal)
+        
     def opRORm(self, data):
         memVal = int(data)
         if self.CARRY & self.p:
@@ -1905,13 +1962,14 @@ class MPU():
             sign = self.NEGATIVE
             mask = self.byteMask
 
-        if self.oax:
-            reg = self.x[0]
-        elif self.oay:
-            reg = self.y[0]
-        else:
-            reg = self.a[0]
-
+#        if self.oax:
+#            reg = self.x[0]
+#        elif self.oay:
+#            reg = self.y[0]
+#        else:
+#            reg = self.a[0]
+        reg = self._getAluReg()
+        
         auL = mask & reg
         auR = mask & data
         cin = self.CARRY & self.p
@@ -1960,13 +2018,14 @@ class MPU():
 
         reg = mask & sum
 
-        if self.oax:
-            self.x[0] = reg
-        elif self.oay:
-            self.y[0] = reg
-        else:
-            self.a[0] = reg
-
+#        if self.oax:
+#            self.x[0] = reg
+#        elif self.oay:
+#            self.y[0] = reg
+#        else:
+#            self.a[0] = reg
+        self._putAluReg(reg)
+        
     def opSBC(self, data):
         if self.siz:
             sign = self.NEGATIVE << 8
@@ -1975,13 +2034,14 @@ class MPU():
             sign = self.NEGATIVE
             mask = self.byteMask
 
-        if self.oax:
-            reg = self.x[0]
-        elif self.oay:
-            reg = self.y[0]
-        else:
-            reg = self.a[0]
-
+#        if self.oax:
+#            reg = self.x[0]
+#        elif self.oay:
+#            reg = self.y[0]
+#        else:
+#            reg = self.a[0]
+        reg = self._getAluReg()
+        
         auL = mask & reg
         auR = mask & ~data
         cin = self.CARRY & self.p
@@ -2028,13 +2088,14 @@ class MPU():
 
         reg = mask & sum
 
-        if self.oax:
-            self.x[0] = reg
-        elif self.oay:
-            self.y[0] = reg
-        else:
-            self.a[0] = reg
-
+#        if self.oax:
+#            self.x[0] = reg
+#        elif self.oay:
+#            self.y[0] = reg
+#        else:
+#            self.a[0] = reg
+        self._putAluReg(reg)
+        
 #
 #   Increment/Decrement/Compare Unit OPerations
 #
@@ -2376,7 +2437,7 @@ class MPU():
         if self.siz:                  # TXS / TXU (only in Kernel mode)
             self.sp[stk] = self.x[0]
         else:
-            self.sp[stk] = 256 + (self.byteMask & self.x[0])
+            self.sp[stk] = 0x100 + (self.byteMask & self.x[0])
 
     def opTSX(self):
         if self.MODE & self.p:
@@ -2514,10 +2575,6 @@ class MPU():
     def opENT(self):
         if self.osx:
             self.osx = False        # use PSP instead of the RSP
-            if self.MODE & self.p:
-                sel = 1
-            else:
-                sel = 0
         else:
             self.osx = True         # use RSP
         
@@ -3683,7 +3740,7 @@ class MPU():
 
     @instruction(name="JMP", mode="abs", cycles=3)
     def inst_0x4C(self):
-        _, self.pc = self.abs()
+        _, self.pc = self._abs()
         self.clrPrefixFlags()
 
     @instruction(name="PHR", mode="rel16", cycles=6)
@@ -3693,12 +3750,12 @@ class MPU():
 
     @instruction(name="JMP", mode="absI", cycles=5)
     def inst_0x6C(self):
-        _, self.pc = self.absI()
+        _, self.pc = self._absI()
         self.clrPrefixFlags()
 
     @instruction(name="JMP", mode="absXI", cycles=5)
     def inst_0x7C(self):
-        _, self.pc = self.absXI()
+        _, self.pc = self._absXI()
         self.clrPrefixFlags()
 
     @instruction(name="STY", mode="abs", cycles=4)

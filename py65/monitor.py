@@ -481,7 +481,9 @@ class Monitor(cmd.Cmd):
 
         self._mpu.pc = self._address_parser.number(args)
         brks = [0x00]  # BRK
+        self._mpu.dbg = True
         self._run(stopcodes=brks)
+        self._mpu.dbg = False
 
     def _run(self, stopcodes):
         stopcodes = set(stopcodes)
@@ -668,7 +670,7 @@ class Monitor(cmd.Cmd):
                             else:
                                 self._mpu.p = intval | self._mpu.BREAK
                         elif register in ['d']:
-                            self._mpu.dbg = bool(intval & 1)
+                            self._mpu.dbgE = bool(intval & 1)
                         elif register in ['f']:
                             self._mpu.siz = self._mpu.ind = False
                             self._mpu.osx = self._mpu.oax = False
@@ -686,8 +688,6 @@ class Monitor(cmd.Cmd):
                                 self._output(msg % (value))
                             if intval & 0x0010:
                                 self._mpu.oay= True
-                        elif register in ['d']:
-                            self._mpu.dbg = bool(intval & 1)
                 else:
                     if register != 'pc':
                         if intval != (intval & self.byteMask):
