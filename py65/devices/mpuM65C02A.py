@@ -44,11 +44,22 @@ class MPU():
     oay  = False
     ind  = False
     siz  = False
-    
-    lscx = False  # override osx for the LDX/STX/CPX zp/abs instructions
 
-    dbg  = False
+    '''
+        Override OSX for LDX/STX/CPX imm/zp/zp,Y/abs/abs,Y and PSH/PUL zp/abs
+        instructions. Not possible to simultaneously specify an operand address
+        using a SP-relative or BP-relative instruction, swap the source/desti-
+        nation register, and / or change the default stack pointer of an
+        instruction. LSCX flag was added using a spare mode control field in the
+        instruction decoder ROM so instructions that cannot support SP-relative
+        and / or changing the default SP can be flagged as such during the
+        instruction fetch / decode stage.
+    '''
+
+    lscx = False
+
     dbgE = False
+    dbg  = False
 
     def __init__(self, memory=None, pc=0x0200):
         # config
@@ -1434,11 +1445,14 @@ class MPU():
         self.pc = addr
 
     def opRTI(self):        # may need to be trapped if used in User mode
-        self.osx = False
         self.siz = False
-        self.p = (self.PULL() | self.BREAK)
+        tmpPSW = (self.PULL() | self.BREAK)
         self.siz = True
         self.pc = self.addrMask & (self.PULL() + 1)
+        if self.p & self.MODE:
+            self.p = self.byteMask & tmpPSW
+        else:
+            self.p = self.byteMask & (tmpPSW & ~self.MODE)
     
     def opRTS(self):
         self.siz = True
