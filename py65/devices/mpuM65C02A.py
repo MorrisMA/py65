@@ -1708,88 +1708,59 @@ class MPU():
             self.a[0] = data         
 
     def opASLr(self):
-        self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
-#        if self.oax:
-#            regVal = self.x[0]
-#        elif self.oay:
-#            regVal = self.y[0]
-#        else:
-#            regVal = self.a[0]
-        regVal = self.getAluReg()
-        cin = self.CARRY & self.p
+        regVal = self._getAluReg()
 
+        cin = self.CARRY & self.p
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+
         if self.siz:
-            self.p |= self.NEGATIVE & (regVal >>  7)
-            self.p |= self.CARRY    & (regVal >> 15)
+            self.p |= self.CARRY & (regVal >> 15)
 
             if self.ind:
                 self.p &= ~self.OVERFLOW
                 self.p |= self.OVERFLOW & ((regVal >> 9) ^ (regVal >> 8))
 
-                regVal = self.wordMask  & ((regVal << 1) | cin)
+                regVal = self.wordMask & ((regVal << 1) | cin)
             else:
-                regVal = self.wordMask  &  (regVal << 1)
+                regVal = self.wordMask &  (regVal << 1)
         else:
-            self.p |= self.NEGATIVE & regVal
             self.p |= self.CARRY & (regVal >> 7)
 
             regVal = self.byteMask & (regVal << 1)
 
-        if regVal == 0:
-            self.p |= self.ZERO
-
-#        if self.oax:
-#            self.x[0] = regVal
-#        elif self.oay:
-#            self.y[0] = regVal
-#        else:
-#            self.a[0] = regVal
+        self.FlagsNZ(regVal)
         self._putAluReg(regVal)
         
     def opASLm(self, data):
         memVal = int(data)
 
+        cin = self.p & self.CARRY
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+
         if self.siz:
             if self.NEGATIVE & (memVal >> 8):
                 self.p |= self.CARRY
 
             memVal = self.wordMask & (memVal << 1)
-
-            if memVal:
-                self.p |= self.NEGATIVE & (memVal >> 8)
-            else:
-                self.p |= self.ZERO
         else:
             if self.NEGATIVE & memVal:
                 self.p |= self.CARRY
 
             memVal = self.byteMask & (memVal << 1)
 
-            if memVal:
-                self.p |= self.NEGATIVE & memVal
-            else:
-                self.p |= self.ZERO
-
+        self.FlagsNZ(memVal)
         return memVal
 
     def opROLr(self):
-        self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
-#        if self.oax:
-#            regVal = self.x[0]
-#        elif self.oay:
-#            regVal = self.y[0]
-#        else:
-#            regVal = self.a[0]
         regVal = self._getAluReg()
 
+        cin = self.p & self.CARRY
+        self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+
         if self.siz:
-            if self.CARRY & self.p:
+            if cin:
                 if self.NEGATIVE & (regVal >> 8):
-                    pass
-                else:
-                    self.p &= ~self.CARRY
+                    self.p |=  self.CARRY
 
                 regVal = self.wordMask & ((regVal << 1) | 1)
             else:
@@ -1798,78 +1769,53 @@ class MPU():
 
                 regVal = self.wordMask & (regVal << 1)
         else:
-            if self.CARRY & self.p:
+            if cin:
                 if self.NEGATIVE & regVal:
-                    pass
-                else:
-                    self.p &= ~self.CARRY
+                    self.p |=  self.CARRY
 
                 regVal = self.byteMask & ((regVal << 1) | 1)
             else:
                 if self.NEGATIVE & regVal:
                     self.p |= self.CARRY
+                
                 regVal = self.byteMask & (regVal << 1)
 
         self.FlagsNZ(regVal)
-
-#        if self.oax:
-#            self.x[0] = regVal
-#        elif self.oay:
-#            self.y[0] = regVal
-#        else:
-#            self.a[0] = regVal
         self._putAluReg(regVal)
         
     def opROLm(self, data):
         memVal = int(data)
 
+        cin = self.p & self.CARRY
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+
         if self.siz:
-            if self.CARRY & self.p:
-                if self.NEGATIVE & (memVal >> 8):
-                    pass
-                else:
-                    self.p &= ~self.CARRY
-
-                memVal = self.wordMask & ((memVal << 1) | 1)
-            else:
-                if self.NEGATIVE & (memVal >> 8):
-                    self.p |= self.CARRY
-
-                memVal = self.wordMask & (memVal << 1)
+            if self.NEGATIVE & (memVal >> 8):
+                self.p |=  self.CARRY
         else:
-            if self.CARRY & self.p:
-                if self.NEGATIVE & rmemVal:
-                    pass
-                else:
-                    self.p &= ~self.CARRY
-
-                memVal = self.byteMask & ((memVal << 1) | 1)
-            else:
-                if self.NEGATIVE & memVal:
-                    self.p |= self.CARRY
-
-                memVal = self.byteMask & (memVal << 1)
+            if self.NEGATIVE & memVal:
+                self.p |=  self.CARRY
+            
+        memVal = self.wordMask & ((memVal << 1) | cin)
 
         self.FlagsNZ(memVal)
         return memVal
 
     def opLSRr(self):
-#        if self.oax:
-#            regVal = self.x[0]
-#        elif self.oay:
-#            regVal = self.y[0]
-#        else:
-#            regVal = self.a[0]
         regVal = self._getAluReg()
         
+        if self.siz and self.ind: # ASR
+            cin = self.CARRY & (regVal >> 15)
+        else:
+            cin = 0
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+
         self.p |= self.CARRY & regVal
 
         if self.siz:
             if self.ind:  # ASR
                 sign  = ((self.OVERFLOW & self.p) << 9)
-                sign ^= regVal & (1 << 15)
+                sign ^= regVal & (self.NEGATIVE << 7)
                 if sign:
                     self.p |= self.NEGATIVE
                 self.p &= ~self.OVERFLOW
@@ -1881,15 +1827,8 @@ class MPU():
         else:
             regVal = (self.byteMask & regVal) >> 1
 
-        if regVal == 0:
-            self.p |= self.ZERO
-
-        if self.oax:
-            self.x[0] = regVal
-        elif self.oay:
-            self.y[0] = regVal
-        else:
-            self.a[0] = regVal
+        self.FlagsNZ(memVal)
+        self._putAluReg(regVal)
 
     def opLSRm(self, data):
         memVal = int(data)
