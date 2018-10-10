@@ -24,10 +24,14 @@ class Assembler:
         ('acc',   ""),
         ('acc',   "A"),
         ('imm',   "#$FF"),
+<<<<<<< HEAD
+=======
+        ('imm',   "#$0FFF"),
+>>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
         ('imm',   "#$FFFF"),
         ('rel16', "$FFFF"),
-        ('ipp',   "$00FF,I"),
-        ('zprel', "$00FF,$00FF"),
+        ('ipp',   "$FF,I"),
+        ('zprel', "$00FF,$FFFF"),
     )
 
     def __init__(self, mpu, address_parser=None):
@@ -45,17 +49,22 @@ class Assembler:
         for mode, format in self.Addressing:
             pat = "^" + re.escape(format) + "$"
             pat = pat.replace('00', '0{%d}' % numchars)
+            pat = pat.replace('0F', '([0-9A-F]{%d})' % 1)
             pat = pat.replace('FF', '([0-9A-F]{%d})' % numchars)
             self._addressing.append([mode, re.compile(pat)])
 
     def assemble(self, statement, pc=0000):
         """ Assemble the given assembly language statement.  If the statement
         uses relative addressing, the program counter (pc) must also be given.
-        The result is a list of bytes.  Raises when assembly fails.
+        The result is a list of bytes.  Raises SyntaxError when assembly fails.
         """
         opcode, operand = self.normalize_and_split(statement)
+<<<<<<< HEAD
         print(' --- assemble: ', opcode, operand)
 
+=======
+        
+>>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
         for mode, pattern in self._addressing:
             match = pattern.match(operand)
             print(' ---- assemble: ', opcode, operand, pattern, match)

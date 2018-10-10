@@ -134,7 +134,7 @@ class AddressParserTests(unittest.TestCase):
         parser = AddressParser(labels={})
         self.assertEqual(None, parser.address_for('chrout'))
 
-    def test_adderss_for_returns_alternate_default(self):
+    def test_address_for_returns_alternate_default(self):
         parser = AddressParser(labels={})
         self.assertEqual('foo', parser.address_for('chrout', 'foo'))
 
