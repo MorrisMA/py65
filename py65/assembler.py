@@ -1,5 +1,5 @@
 import re
-from py65.utils.addressing import AddressParser
+from utils.addressing import AddressParser
 
 
 class Assembler:
@@ -23,6 +23,7 @@ class Assembler:
         ('imp',   ""),
         ('acc',   ""),
         ('acc',   "A"),
+        ('imm',   "#$FF"),
         ('imm',   "#$FFFF"),
         ('rel16', "$FFFF"),
         ('ipp',   "$00FF,I"),
@@ -53,13 +54,15 @@ class Assembler:
         The result is a list of bytes.  Raises when assembly fails.
         """
         opcode, operand = self.normalize_and_split(statement)
+        print(' --- assemble: ', opcode, operand)
 
         for mode, pattern in self._addressing:
             match = pattern.match(operand)
-            
+            print(' ---- assemble: ', opcode, operand, pattern, match)
             if match:
                 # check if opcode supports this addressing mode
                 try:
+                    print(' ---- assemble: ', opcode, mode)
                     bytes = [self._mpu.disassemble.index((opcode, mode))]
                 except ValueError:
                     continue

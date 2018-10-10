@@ -367,6 +367,7 @@ class Monitor(cmd.Cmd):
             try:
                 bytes = self._assembler.assemble(line, pc=start)
                 numbytes = len(bytes)
+                print(' --- _interactive_assembler:', bytes)
 
                 end = start + numbytes
                 self._mpu.memory[start:end] = bytes

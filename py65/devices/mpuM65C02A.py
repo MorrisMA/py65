@@ -1,5 +1,5 @@
-from py65.utils.conversions import itoa
-from py65.utils.devices import make_instruction_decorator
+from utils.conversions import itoa
+from utils.devices import make_instruction_decorator
 
 
 class MPU():
@@ -124,8 +124,10 @@ class MPU():
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
             print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
             self.pc = self.addrMask & (self.pc + 1)
+            if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
+                pass
+            else: self.numInstructions += 1
             self.processorCycles += 1
-            self.numInstructions += 1
             self.pgmMemRdCycles += 1
             return self.pc, instructCode
 
