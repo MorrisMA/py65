@@ -364,8 +364,8 @@ class MPU():
             addr |= self.signExtend
         if index < 512:                     # page 0/1 + unsigned(offset)
             hiAddr = (self.addrHighMask & index)
-            addr = hiAddr + (mask & (index + addr))
             mask = self.byteMask
+            addr = hiAddr + (mask & (index + addr))
             if self.ind:
                 # first indirect
                 tmp1 = self.rdDM(addr)
@@ -1758,27 +1758,15 @@ class MPU():
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
 
         if self.siz:
-            if cin:
-                if self.NEGATIVE & (regVal >> 8):
-                    self.p |=  self.CARRY
+            if self.NEGATIVE & (regVal >> 8):
+                self.p |=  self.CARRY
 
-                regVal = self.wordMask & ((regVal << 1) | 1)
-            else:
-                if self.NEGATIVE & (regVal >> 8):
-                    self.p |= self.CARRY
-
-                regVal = self.wordMask & (regVal << 1)
+            regVal = self.wordMask & ((regVal << 1) | cin)
         else:
-            if cin:
-                if self.NEGATIVE & regVal:
-                    self.p |=  self.CARRY
+            if self.NEGATIVE & regVal:
+                self.p |=  self.CARRY
 
-                regVal = self.byteMask & ((regVal << 1) | 1)
-            else:
-                if self.NEGATIVE & regVal:
-                    self.p |= self.CARRY
-                
-                regVal = self.byteMask & (regVal << 1)
+            regVal = self.byteMask & ((regVal << 1) | cin)
 
         self.FlagsNZ(regVal)
         self._putAluReg(regVal)
@@ -1792,11 +1780,13 @@ class MPU():
         if self.siz:
             if self.NEGATIVE & (memVal >> 8):
                 self.p |=  self.CARRY
+
+            regVal = self.wordMask & ((regVal << 1) | cin)
         else:
             if self.NEGATIVE & memVal:
                 self.p |=  self.CARRY
             
-        memVal = self.wordMask & ((memVal << 1) | cin)
+            memVal = self.byteMask & ((memVal << 1) | cin)
 
         self.FlagsNZ(memVal)
         return memVal
@@ -1814,12 +1804,9 @@ class MPU():
 
         if self.siz:
             if self.ind:  # ASR
-                sign  = ((self.OVERFLOW & self.p) << 9)
-                sign ^= regVal & (self.NEGATIVE << 7)
+                sign = regVal & (self.NEGATIVE << 8)
                 if sign:
                     self.p |= self.NEGATIVE
-                self.p &= ~self.OVERFLOW
-                self.p |= self.OVERFLOW & ((regVal >> 9) ^ (regVal >> 8))
 
                 regVal = sign | ((self.wordMask & regVal) >> 1)
             else:         # LSR
@@ -1827,13 +1814,15 @@ class MPU():
         else:
             regVal = (self.byteMask & regVal) >> 1
 
-        self.FlagsNZ(memVal)
+        self.FlagsNZ(regVal)
         self._putAluReg(regVal)
 
     def opLSRm(self, data):
         memVal = int(data)
 
+        #cin = 0
         self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+        
         self.p |= self.CARRY & memVal
 
         if self.siz:
@@ -1845,60 +1834,35 @@ class MPU():
         return memVal
 
     def opRORr(self):
-#        if self.oax:
-#            regVal = self.x[0]
-#        elif self.oay:
-#            regVal = self.y[0]
-#        else:
-#            regVal = self.a[0]
         regVal = self._getAluReg()
         
-        if self.CARRY & self.p:
-            if self.CARRY & regVal:
-                pass
-            else:
-                self.p &= ~self.CARRY
-            if self.siz:
-                regVal = ((self.wordMask & regVal) >> 1) | (1 << 15)
-            else:
-                regVal = ((self.byteMask & regVal) >> 1) | (1 <<  7)
+        cin = self.p & self.CARRY
+        self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+
+        if self.CARRY & regVal:
+            self.p |= self.CARRY
+
+        if self.siz:
+            regVal = ((self.wordMask & regVal) >> 1) | (cin << 15)
         else:
-            if self.CARRY & regVal:
-                self.p |= self.CARRY
-            if self.siz:
-                regVal = (self.wordMask & regVal) >> 1
-            else:
-                regVal = (self.byteMask & regVal) >> 1
-        
+            regVal = ((self.byteMask & regVal) >> 1) | (cin <<  7)
+
         self.FlagsNZ(regVal)
-#        if self.oax:
-#            self.x[0] = regVal
-#        elif self.oay:
-#            self.y[0] = regVal
-#        else:
-#            self.a[0] = regVal
         self._putAluReg(regVal)
         
     def opRORm(self, data):
         memVal = int(data)
-        if self.CARRY & self.p:
-            if self.CARRY & memVal:
-                pass
-            else:
-                self.p &= ~self.CARRY
 
-            if self.siz:
-                memVal = ((self.wordMask & memVal) >> 1) | (1 << 15)
-            else:
-                memVal = ((self.wordMask & memVal) >> 1) | (1 <<  7)
+        cin = self.p & self.CARRY
+        self.p &= ~(self.NEGATIVE | self.ZERO | self.CARRY)
+
+        if self.CARRY & memVal:
+            self.p |= self.CARRY
+
+        if self.siz:
+            memVal = ((self.wordMask & memVal) >> 1) | (cin << 15)
         else:
-            if self.CARRY & memVal:
-                self.p |= self.CARRY
-
-            if self.siz:
-                memVal = (self.wordMask & memVal) >> 1
-            else:
-                memVal = (self.byteMask & memVal) >> 1
+            memVal = ((self.wordMask & memVal) >> 1) | (cin <<  7)
 
         self.FlagsNZ(memVal)
         return memVal
@@ -1915,12 +1879,6 @@ class MPU():
             sign = self.NEGATIVE
             mask = self.byteMask
 
-#        if self.oax:
-#            reg = self.x[0]
-#        elif self.oay:
-#            reg = self.y[0]
-#        else:
-#            reg = self.a[0]
         reg = self._getAluReg()
         
         auL = mask & reg
@@ -1971,12 +1929,6 @@ class MPU():
 
         reg = mask & sum
 
-#        if self.oax:
-#            self.x[0] = reg
-#        elif self.oay:
-#            self.y[0] = reg
-#        else:
-#            self.a[0] = reg
         self._putAluReg(reg)
         
     def opSBC(self, data):
@@ -1987,12 +1939,6 @@ class MPU():
             sign = self.NEGATIVE
             mask = self.byteMask
 
-#        if self.oax:
-#            reg = self.x[0]
-#        elif self.oay:
-#            reg = self.y[0]
-#        else:
-#            reg = self.a[0]
         reg = self._getAluReg()
         
         auL = mask & reg
@@ -2041,12 +1987,6 @@ class MPU():
 
         reg = mask & sum
 
-#        if self.oax:
-#            self.x[0] = reg
-#        elif self.oay:
-#            self.y[0] = reg
-#        else:
-#            self.a[0] = reg
         self._putAluReg(reg)
         
 #
@@ -2082,6 +2022,7 @@ class MPU():
                 sel = 1
             else:
                 sel = 0
+            
             if self.siz:
                 self.sp[sel] = self.wordMask & (self.sp[sel] + 1)
                 self.FlagsNZ(self.sp[sel])
@@ -2122,6 +2063,7 @@ class MPU():
             tmp = self.wordMask & (tmp + 1)
         else:
             tmp = self.byteMask & (tmp + 1)
+
         self.FlagsNZ(tmp)
         return tmp
 
