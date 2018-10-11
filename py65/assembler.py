@@ -24,7 +24,10 @@ class Assembler:
         ('acc',   ""),
         ('acc',   "A"),
         ('imm',   "#$FF"),
+<<<<<<< HEAD
+=======
         ('imm',   "#$0FFF"),
+>>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
         ('imm',   "#$FFFF"),
         ('rel16', "$FFFF"),
         ('ipp',   "$FF,I"),
@@ -56,13 +59,19 @@ class Assembler:
         The result is a list of bytes.  Raises SyntaxError when assembly fails.
         """
         opcode, operand = self.normalize_and_split(statement)
+<<<<<<< HEAD
+        print(' --- assemble: ', opcode, operand)
+
+=======
         
+>>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
         for mode, pattern in self._addressing:
             match = pattern.match(operand)
-            
+            print(' ---- assemble: ', opcode, operand, pattern, match)
             if match:
                 # check if opcode supports this addressing mode
                 try:
+                    print(' ---- assemble: ', opcode, mode)
                     bytes = [self._mpu.disassemble.index((opcode, mode))]
                 except ValueError:
                     continue
