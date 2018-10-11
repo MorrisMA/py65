@@ -49,33 +49,22 @@ def getch_noblock(stdin):
     character.  If no character is available, an empty string is returned.
     """
 
-<<<<<<< HEAD
+    char = ''
     fd = stdin.fileno()
 
-    oldterm = termios.tcgetattr(fd)
+    try:
+        oldterm = termios.tcgetattr(fd)
+    except termios.error:  # https://github.com/mnaberez/py65/issues/46
+        return char
+
     newattr = oldterm[:]
     newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
     termios.tcsetattr(fd, termios.TCSANOW, newattr)
-=======
-        char = ''
-        fd = stdin.fileno()
-
-        try:
-            oldterm = termios.tcgetattr(fd)
-        except termios.error:  # https://github.com/mnaberez/py65/issues/46
-            return char
-
-        newattr = oldterm[:]
-        newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
-        termios.tcsetattr(fd, termios.TCSANOW, newattr)
->>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
 
     oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
 
-<<<<<<< HEAD
     try:
-        char = ''
         r, w, e = select.select([fd], [], [], 0.1)
         if r:
             char = stdin.read(1)
@@ -85,18 +74,6 @@ def getch_noblock(stdin):
         termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
         fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
     return char
-=======
-        try:
-            r, w, e = select.select([fd], [], [], 0.1)
-            if r:
-                char = stdin.read(1)
-                if char == "\n":
-                    char = "\r"
-        finally:
-            termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
-            fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
-        return char
->>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
 
 
 def line_input(prompt='', stdin=sys.stdin, stdout=sys.stdout):
@@ -110,17 +87,9 @@ def line_input(prompt='', stdin=sys.stdin, stdout=sys.stdout):
     while True:
         char = getch(stdin)
         code = ord(char)
-<<<<<<< HEAD
-        if char in ("\n", "\r"):            # LF,  CR
-            break
-        elif code in (0x1B, 0x00, 0xFF):    # ESC, NUL, ???
-            pass
-        elif code in (0x7F, 0x08):          # DEL, BS
-=======
         if char in ("\n", "\r"):
             break
         elif code in (0x7f, 0x08):  # backspace
->>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
             if len(line) > 0:
                 line = line[:-1]
                 stdout.write("\r%s\r%s%s" %

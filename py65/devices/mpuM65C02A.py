@@ -1,9 +1,5 @@
 from utils.conversions import itoa
 from utils.devices import make_instruction_decorator
-<<<<<<< HEAD
-
-=======
->>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
 
 class MPU():
     # vectors
@@ -147,18 +143,11 @@ class MPU():
     def step(self):
         def getInstruction(self):
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
-<<<<<<< HEAD
-            print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
-            self.pc = self.addrMask & (self.pc + 1)
-            if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
-                pass
-=======
             if self.dbg & self.dbgE:
                 print('   IR:', '%02X <= mem[%04X]' % (instructCode, self.pc))
             pc = self.addrMask & (self.pc + 1)
             if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
                 pass 
->>>>>>> 6b9803d6b558e09e4c37f2cfa2bb949253ef7c10
             else: self.numInstructions += 1
             self.processorCycles += 1
             self.pgmMemRdCycles += 1
