@@ -461,7 +461,7 @@ class MPU():
             mask = self.addrMask
             hiAddr = 0
             if addr & self.NEGATIVE:
-                addr += self.addrHighMask   # sign extend
+                addr |= self.addrHighMask   # sign extend
             addr = hiAddr + (mask & (index + addr))
             if self.ind:
                 # first indirect
@@ -1020,7 +1020,7 @@ class MPU():
             tmp2 = self.rdDM(self.ip) << 8
             self.ip = mask & (self.ip + 1)
             addr = tmp2 + tmp1
-        tmp1 = rdDM(addr); tmp2 = 0
+        tmp1 = self.rdDM(addr); tmp2 = 0
         if not self.ind: self.ip = mask & (self.ip + 1)
         if self.siz:
             tmp2 = self.rdDM(mask & (addr + 1)) << 8
@@ -1031,7 +1031,7 @@ class MPU():
     def wo_ipp(self, op):
         self.rdPM()   # skip immediate operand, unused.
         
-        data = self.op()
+        data = op()
         
         addr = self.ip
         mask = self.addrMask
@@ -2183,10 +2183,8 @@ class MPU():
 
     def opCPX(self, memVal):
         if self.osx:
-            if self.MODE & self.p:
-                sel = 1
-            else:
-                sel = 0
+            if self.MODE & self.p: sel = 1
+            else: sel = 0
             regVal = self.sp[sel]
         elif self.oax:
             regVal = int(self.a[0])
@@ -2281,7 +2279,7 @@ class MPU():
                 self.sp[stk] = self.a[0]
             else:
                 self.sp[stk] = 256 + (self.byteMask & self.a[0])
-        else:                         # TAX
+        else:                           # TAX
             if self.siz:
                 self.x[0] = self.a[0]
             else:
@@ -2289,38 +2287,55 @@ class MPU():
             self.FlagsNZ(self.x[0])
 
     def opTXA(self):
-        if self.oay:                  # TXY
+        if self.oay:                    # TXY
             if self.siz:
                 self.y[0] = self.x[0]
             else:
                 self.y[0] = self.byteMask & self.x[0]
+            
             self.FlagsNZ(self.y[0])
-        else:                         # TXA
+        if self.osx:                    # TSA/TUA
+            if self.p & self.MODE:
+                if self.ind: stk = 0
+                else: stk = 1
+            else: stk = 0
+            
             if self.siz:
-                self.a[0] = self.x[0]
+                self.a[0] = self.wordMask & self.sp[stk]
+            else:
+                self.a[0] = self.byteMask & self.sp[stk]
+            
+            self.FlagsNZ(self.y[0])
+        else:                           # TXA
+            if self.siz:
+                self.a[0] = self.wordMask & self.x[0]
             else:
                 self.a[0] = self.byteMask & self.x[0]
+            
             self.FlagsNZ(self.a[0])
 
     def opTAY(self):
         if self.siz:
-            self.y[0] = self.a[0]
+            self.y[0] = self.wordMask & self.a[0]
         else:
             self.y[0] = self.byteMask & self.a[0]
+        
         self.FlagsNZ(self.y[0])
 
     def opTYA(self):
         if self.oax:                  # TYX
             if self.siz:
-                self.x[0] = self.y[0]
+                self.x[0] = self.wordMask & self.y[0]
             else:
                 self.x[0] = self.byteMask & self.y[0]
+            
             self.FlagsNZ(self.x[0])
         else:                         # TYA
             if self.siz:
                 self.a[0] = self.y[0]
             else:
                 self.a[0] = self.byteMask & self.y[0]
+            
             self.FlagsNZ(self.a[0])
 
     def opTXS(self):
@@ -2330,7 +2345,7 @@ class MPU():
         else: stk = 0
 
         if self.siz:                  # TXS / TXU (only in Kernel mode)
-            self.sp[stk] = self.x[0]
+            self.sp[stk] = self.wordMask & self.x[0]
         else:
             self.sp[stk] = 0x100 + (self.byteMask & self.x[0])
 
@@ -2342,15 +2357,17 @@ class MPU():
 
         if self.oax:                  # TSA / TUA (only in Kernel mode)
             if self.siz:
-                self.a[0] = self.sp[stk]
+                self.a[0] = self.wordMask & self.sp[stk]
             else:
                 self.a[0] = self.byteMask & self.sp[stk]
+            
             self.FlagsNZ(self.a[0])
         else:                         # TSX / TUX (only in Kernel mode)
             if self.siz:
-                self.x[0] = self.sp[stk]
+                self.x[0] = self.wordMask & self.sp[stk]
             else:
                 self.x[0] = self.byteMask & self.sp[stk]
+            
             self.FlagsNZ(self.x[0])
 
 #
@@ -2897,7 +2914,7 @@ class MPU():
 
     @instruction(name="CMP", mode="ipp", cycles=3)
     def inst_0xC3(self):
-        self.ro_ipp(self.opCMPm)
+        self.ro_ipp(self.opCMP)
         self.clrPrefixFlags()
 
     @instruction(name="DEC", mode="ipp", cycles=4)
@@ -3763,12 +3780,12 @@ class MPU():
 
     @instruction(name="CMP", mode="abs", cycles=4)
     def inst_0xCD(self):
-        self.ro_abs(self.opCMPR, self.a)
+        self.ro_abs(self.opCMP)
         self.clrPrefixFlags()
 
     @instruction(name="CMP", mode="absX", cycles=4)
     def inst_0xDD(self):
-        self.ro_absX(self.opCMPR, self.a)
+        self.ro_absX(self.opCMP)
         self.clrPrefixFlags()
 
     @instruction(name="SBC", mode="abs", cycles=4)
@@ -3850,22 +3867,22 @@ class MPU():
 
     @instruction(name="DEC", mode="abs", cycles=5)
     def inst_0xCE(self):
-        self.rmw_abs(self.opDECR)
+        self.rmw_abs(self.opDECm)
         self.clrPrefixFlags()
 
     @instruction(name="DEC", mode="absX", cycles=5)
     def inst_0xDE(self):
-        self.rmw_absX(self.opDECR)
+        self.rmw_absX(self.opDECm)
         self.clrPrefixFlags()
 
     @instruction(name="INC", mode="abs", cycles=5)
     def inst_0xEE(self):
-        self.rmw_abs(self.opINCR)
+        self.rmw_abs(self.opINCm)
         self.clrPrefixFlags()
 
     @instruction(name="INC", mode="absX", cycles=5)
     def inst_0xFE(self):
-        self.absX(self.opINCR)
+        self.absX(self.opINCm)
         self.clrPrefixFlags()
 
 #
