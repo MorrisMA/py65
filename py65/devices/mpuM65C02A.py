@@ -1804,11 +1804,20 @@ class MPU():
 
         if self.siz:
             if self.ind:  # ASR
+#                sign = regVal & (self.NEGATIVE << 8)
+#                if sign:
+#                    self.p |= self.NEGATIVE
+#
+#                regVal = sign | ((self.wordMask & regVal) >> 1)
                 sign = regVal & (self.NEGATIVE << 8)
-                if sign:
-                    self.p |= self.NEGATIVE
+                if self.p & self.OVERFLOW:
+                    sign ^= (self.NEGATIVE << 8)
 
                 regVal = sign | ((self.wordMask & regVal) >> 1)
+
+                if sign:
+                    self.p |= self.NEGATIVE
+                self.p &= ~self.OVERFLOW
             else:         # LSR
                 regVal = (self.wordMask & regVal) >> 1
         else:
