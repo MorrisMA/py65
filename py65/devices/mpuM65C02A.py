@@ -2600,6 +2600,7 @@ class MPU():
 
     def inst_not_implemented(self):
         self.pc = self.addrMask & (self.pc + 1)
+
     instruct = [inst_not_implemented] * 256
     cycletime = [0] * 256
     extracycles = [0] * 256
@@ -3277,25 +3278,25 @@ class MPU():
         self.clrPrefixFlags()
 
     @instruction(name="SMB4", mode="zp", cycles=4)
-    def inst_0xc7(self):
+    def inst_0xC7(self):
         self.bitMask = 0x10
         self.rmw_zp(self.opSMBx)
         self.clrPrefixFlags()
 
     @instruction(name="SMB5", mode="zp", cycles=4)
-    def inst_0xd7(self):
+    def inst_0xD7(self):
         self.bitMask = 0x20
         self.rmw_zp(self.opSMBx)
         self.clrPrefixFlags()
 
     @instruction(name="SMB6", mode="zp", cycles=4)
-    def inst_0xe7(self):
+    def inst_0xE7(self):
         self.bitMask = 0x40
         self.rmw_zp(self.opSMBx)
         self.clrPrefixFlags()
 
     @instruction(name="SMB7", mode="zp", cycles=4)
-    def inst_0xf7(self):
+    def inst_0xF7(self):
         self.bitMask = 0x80
         self.rmw_zp(self.opSMBx)
         self.clrPrefixFlags()
