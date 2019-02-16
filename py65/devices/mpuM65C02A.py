@@ -2278,41 +2278,18 @@ class MPU():
         return 0
 
     def opTAX(self):
-        if self.osx:    
-            if self.MODE & self.p:
-                if self.ind: stk = 0
-                else: stk = 1
-            else: stk = 0
-
-            if self.siz:              # TAS / TAU (only in Kernel mode)
-                self.sp[stk] = self.a[0]
-            else:
-                self.sp[stk] = 256 + (self.byteMask & self.a[0])
-        else:                           # TAX
-            if self.siz:
-                self.x[0] = self.a[0]
-            else:
-                self.x[0] = self.byteMask & self.a[0]
-            self.FlagsNZ(self.x[0])
+        if self.siz:
+            self.x[0] = self.wordMask & self.a[0]
+        else:
+            self.x[0] = self.byteMask & self.a[0]
+        self.FlagsNZ(self.x[0])
 
     def opTXA(self):
         if self.oay:                    # TXY
             if self.siz:
-                self.y[0] = self.x[0]
+                self.y[0] = self.wordMask & self.x[0]
             else:
                 self.y[0] = self.byteMask & self.x[0]
-            
-            self.FlagsNZ(self.y[0])
-        if self.osx:                    # TSA/TUA
-            if self.p & self.MODE:
-                if self.ind: stk = 0
-                else: stk = 1
-            else: stk = 0
-            
-            if self.siz:
-                self.a[0] = self.wordMask & self.sp[stk]
-            else:
-                self.a[0] = self.byteMask & self.sp[stk]
             
             self.FlagsNZ(self.y[0])
         else:                           # TXA
@@ -2332,52 +2309,48 @@ class MPU():
         self.FlagsNZ(self.y[0])
 
     def opTYA(self):
-        if self.oax:                  # TYX
-            if self.siz:
-                self.x[0] = self.wordMask & self.y[0]
-            else:
-                self.x[0] = self.byteMask & self.y[0]
-            
-            self.FlagsNZ(self.x[0])
-        else:                         # TYA
-            if self.siz:
-                self.a[0] = self.y[0]
-            else:
-                self.a[0] = self.byteMask & self.y[0]
-            
-            self.FlagsNZ(self.a[0])
+        if self.oax:                    # TYX
+            reg = self.x
+        else: reg = self.a              # TYA
+
+        if self.siz:
+            reg[0] = self.wordMask & self.y[0]
+        else:
+            reg[0] = self.byteMask & self.y[0]
+        
+        self.FlagsNZ(reg[0])
 
     def opTXS(self):
+        if self.oax:
+            val = self.a[0]             # TAS / TAU
+        else: val = self.x[0]           # TXS / TXU
+        
         if self.MODE & self.p:
             if self.ind: stk = 0
             else: stk = 1
         else: stk = 0
 
-        if self.siz:                  # TXS / TXU (only in Kernel mode)
-            self.sp[stk] = self.wordMask & self.x[0]
+        if self.siz:                   
+            self.sp[stk] = self.wordMask & val
         else:
-            self.sp[stk] = 0x100 + (self.byteMask & self.x[0])
+            self.sp[stk] = 0x100 + (self.byteMask & val)
 
     def opTSX(self):
+        if self.oax:                    # TSA / TUA
+            reg = self.a
+        else: reg = self.x              # TSX / TUX
+
         if self.MODE & self.p:
             if self.ind: stk = 0
             else: stk = 1
         else: stk = 0
 
-        if self.oax:                  # TSA / TUA (only in Kernel mode)
-            if self.siz:
-                self.a[0] = self.wordMask & self.sp[stk]
-            else:
-                self.a[0] = self.byteMask & self.sp[stk]
-            
-            self.FlagsNZ(self.a[0])
-        else:                         # TSX / TUX (only in Kernel mode)
-            if self.siz:
-                self.x[0] = self.wordMask & self.sp[stk]
-            else:
-                self.x[0] = self.byteMask & self.sp[stk]
-            
-            self.FlagsNZ(self.x[0])
+        if self.siz:
+            reg[0] = self.wordMask & self.sp[stk]
+        else:
+            reg[0] = self.byteMask & self.sp[stk]
+        
+        self.FlagsNZ(reg[0])
 
 #
 #   Register Stack Operations

@@ -8,6 +8,25 @@ class Assembler:
                            r'[,xXyYiI\s]*|\s*,\s*[^,\s\)]+)$')
 
     Addressing = (
+        # common addressing modes
+        ('rel',   "$FFFF"),
+        ('imp',   ""),
+        ('acc',   ""),
+        ('acc',   "A"),
+        ('imm',   "#$FF"),
+        # 6502/65C02 addressing modes
+        ('zpg',   "$00FF"),
+        ('zpx',   "$00FF,X"),
+        ('zpy',   "$00FF,Y"),
+        ('zpi',   "($00FF)"),
+        ('inx',   "($00FF,X)"),
+        ('iny',   "($00FF),Y"),
+        ('abs',   "$FFFF"),
+        ('abx',   "$FFFF,X"),
+        ('aby',   "$FFFF,Y"),
+        ('ind',   "($FFFF)"),
+        ('iax',   "($FFFF,X)"),
+        # M65C02A addressing modes
         ('zp',    "$00FF"),
         ('zpX',   "$00FF,X"),
         ('zpY',   "$00FF,Y"),
@@ -19,11 +38,6 @@ class Assembler:
         ('absY',  "$FFFF,Y"),
         ('absI',  "($FFFF)"),
         ('absXI', "($FFFF,X)"),
-        ('rel',   "$FFFF"),
-        ('imp',   ""),
-        ('acc',   ""),
-        ('acc',   "A"),
-        ('imm',   "#$FF"),
         ('imm',   "#$0FFF"),
         ('imm',   "#$FFFF"),
         ('rel16', "$FFFF"),
