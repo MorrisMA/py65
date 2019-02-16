@@ -2285,20 +2285,16 @@ class MPU():
         self.FlagsNZ(self.x[0])
 
     def opTXA(self):
-        if self.oay:                    # TXY
-            if self.siz:
-                self.y[0] = self.wordMask & self.x[0]
-            else:
-                self.y[0] = self.byteMask & self.x[0]
-            
-            self.FlagsNZ(self.y[0])
-        else:                           # TXA
-            if self.siz:
-                self.a[0] = self.wordMask & self.x[0]
-            else:
-                self.a[0] = self.byteMask & self.x[0]
-            
-            self.FlagsNZ(self.a[0])
+        if self.oay:
+            dst = self.y                # TXY
+        else: dst = self.a              # TXA
+
+        if self.siz:
+            dst[0] = self.wordMask & self.x[0]
+        else:
+            dst[0] = self.byteMask & self.x[0]
+        
+        self.FlagsNZ(dst[0])
 
     def opTAY(self):
         if self.siz:
@@ -2309,48 +2305,48 @@ class MPU():
         self.FlagsNZ(self.y[0])
 
     def opTYA(self):
-        if self.oax:                    # TYX
-            reg = self.x
-        else: reg = self.a              # TYA
+        if self.oax:                    
+            dst = self.x                # TYX
+        else: dst = self.a              # TYA
 
         if self.siz:
-            reg[0] = self.wordMask & self.y[0]
+            dst[0] = self.wordMask & self.y[0]
         else:
-            reg[0] = self.byteMask & self.y[0]
+            dst[0] = self.byteMask & self.y[0]
         
-        self.FlagsNZ(reg[0])
+        self.FlagsNZ(dst[0])
 
     def opTXS(self):
         if self.oax:
-            val = self.a[0]             # TAS / TAU
-        else: val = self.x[0]           # TXS / TXU
+            src = self.a                # TAS / TAU
+        else: src = self.x              # TXS / TXU
         
         if self.MODE & self.p:
-            if self.ind: stk = 0
-            else: stk = 1
-        else: stk = 0
+            if self.ind: stk = 0        # U in Kernel mode
+            else: stk = 1               # S in Kernel mode
+        else: stk = 0                   # S / U in User mode
 
         if self.siz:                   
-            self.sp[stk] = self.wordMask & val
+            self.sp[stk] = self.wordMask & src[0]
         else:
-            self.sp[stk] = 0x100 + (self.byteMask & val)
+            self.sp[stk] = 0x100 + (self.byteMask & src[0])
 
     def opTSX(self):
-        if self.oax:                    # TSA / TUA
-            reg = self.a
-        else: reg = self.x              # TSX / TUX
+        if self.oax:                    
+            dst = self.a                # TSA / TUA
+        else: dst = self.x              # TSX / TUX
 
         if self.MODE & self.p:
-            if self.ind: stk = 0
-            else: stk = 1
-        else: stk = 0
+            if self.ind: stk = 0        # U in Kernel mode
+            else: stk = 1               # S in Kernel mode
+        else: stk = 0                   # S / U in User mode
 
         if self.siz:
-            reg[0] = self.wordMask & self.sp[stk]
+            dst[0] = self.wordMask & self.sp[stk]
         else:
-            reg[0] = self.byteMask & self.sp[stk]
+            dst[0] = self.byteMask & self.sp[stk]
         
-        self.FlagsNZ(reg[0])
+        self.FlagsNZ(dst[0])
 
 #
 #   Register Stack Operations
