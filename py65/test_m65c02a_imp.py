@@ -3582,6 +3582,646 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
             self.assertEqual(s[j], mpu.sp[j])
         self.assertEqual(i, mpu.ip)
         self.assertEqual(w, mpu.wp)
+        
+    #rti
+    #rti.s (osx rti)
+    #rts
+    #rts.s (osx rts)
+    #dey [NZ]
+    #dey.w (siz dey) [NZ]
+    #iny [NZ]
+    #iny.w (siz iny) [NZ]
+    #dex [NZ] 
+    #dex.w (siz dex) [NZ]
+    #inx [NZ]
+    #inx.w (siz inx) [NZ]
+    #ins (osx ins) [NZ]
+    #ins.w (osz inx) [NZ]
+    #des (osx dex) [NZ]
+    #des.w (osz dex) [NZ]
+    #inu (osx ind ins) [NZ]
+    #inu.w (ois inx) [NZ]
+    #deu (osx ind dex) [NZ]
+    #deu.w (ois dex) [NZ]
+
+    #phi
+    
+    def test_push_word_ip_to_default_stack_X(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.x = {0 : 0x17F, 1 : 0x4444, 2 : 0x2222}
+        mpu.ip = 0x5AA5
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = {0 : 0x017D, 1 : 0x4444, 2 : 0x2222}
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x4B    # PHI
+        mpu.memory[0x201] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(0x5A, mpu.memory[0x17F])
+        self.assertEqual(0xA5, mpu.memory[0x17E])
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #phi.s (osx phi)
+    
+    def test_push_word_ip_to_alternate_stack_S(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.sp = {0 : 0x01FF, 1 : 0x01FF}
+        mpu.ip = 0xA55A
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = {0 : 0x01FF, 1 : 0x01FD}
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x8B    # OSX
+        mpu.memory[0x201] = 0x4B    # PHI
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xA5, mpu.memory[0x1FF])
+        self.assertEqual(0x5A, mpu.memory[0x1FE])
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #ini
+    
+    def test_word_increment_ip(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.ip = 0xFFFF
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = mpu.wordMask & (mpu.ip + 1)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x5B    # INI
+        mpu.memory[0x201] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #pli
+    
+    def test_pull_word_ip_from_default_stack_X(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.x = {0 : 0x17D, 1 : 0x4444, 2 : 0x2222}
+        mpu.ip = 0x0000
+        mpu.memory[0x17F] = 0x5A
+        mpu.memory[0x17E] = 0xA5
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = {0 : 0x017F, 1 : 0x4444, 2 : 0x2222}
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = 0x5AA5
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x6B    # PLI
+        mpu.memory[0x201] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #pli.s (osx pli)
+    
+    def test_pull_word_ip_from_alternate_stack_S(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.sp = {0 : 0x01FF, 1 : 0x01FD}
+        mpu.ip = 0x0000
+        mpu.memory[0x1FF] = 0xA5
+        mpu.memory[0x1FE] = 0x5A
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = {0 : 0x01FF, 1 : 0x01FF}
+        i = 0xA55A
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x8B    # 0SX
+        mpu.memory[0x201] = 0x6B    # PLI
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #phw (ind phi)
+    
+    def test_push_word_wp_to_default_stack_X(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.x = {0 : 0x17F, 1 : 0x4444, 2 : 0x2222}
+        mpu.wp = 0x5AA5
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = {0 : 0x017D, 1 : 0x4444, 2 : 0x2222}
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x9B    # IND
+        mpu.memory[0x201] = 0x4B    # PHI
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x5A, mpu.memory[0x17F])
+        self.assertEqual(0xA5, mpu.memory[0x17E])
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #phw.s (ois phi)
+    
+    def test_push_word_wp_to_alternate_stack_S(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.sp = {0 : 0x01FF, 1 : 0x01FF}
+        mpu.wp = 0xA55A
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = {0 : 0x01FF, 1 : 0x01FD}
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0xDB    # OIS
+        mpu.memory[0x201] = 0x4B    # PHI
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xA5, mpu.memory[0x1FF])
+        self.assertEqual(0x5A, mpu.memory[0x1FE])
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #inw (ind ini)
+    
+    def test_word_increment_wp(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.wp = 0xFFFF
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = mpu.wordMask & (mpu.wp + 1)
+
+        mpu.memory[0x200] = 0x9B    # IND
+        mpu.memory[0x201] = 0x5B    # INI
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #plw (ind pli)
+    
+    def test_pull_word_wp_from_default_stack_X(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.x = {0 : 0x17D, 1 : 0x4444, 2 : 0x2222}
+        mpu.wp = 0x0000
+        mpu.memory[0x17F] = 0x5A
+        mpu.memory[0x17E] = 0xA5
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = {0 : 0x017F, 1 : 0x4444, 2 : 0x2222}
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = 0x5AA5
+
+        mpu.memory[0x200] = 0x9B    # IND
+        mpu.memory[0x201] = 0x6B    # PLI
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #plw.s (ois pli)
+    
+    def test_pull_word_wp_from_alternate_stack_S(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.sp = {0 : 0x01FF, 1 : 0x01FD}
+        mpu.wp = 0x0000
+        mpu.memory[0x1FF] = 0xA5
+        mpu.memory[0x1FE] = 0x5A
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = {0 : 0x01FF, 1 : 0x01FF}
+        i = copy.copy(mpu.ip)
+        w = 0xA55A
+
+        mpu.memory[0x200] = 0xDB    # OIS
+        mpu.memory[0x201] = 0x6B    # PLI
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #nxt
+    #nxt.s (osx nxt)
+    #ent
+    #ent.s (osx ent)
+    #inxt (ind nxt)
+    #inxt.s (ois nxt)
+    #ient (ind ent)
+    #ient.s (ois ent)
+
+    #dup
+
+    def test_duplicate_TOS_register_stack_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x8888, 1 : 0x4444, 2 : 0x2222}
+
+        p = copy.copy(mpu.p)
+        a = {0 : 0x8888, 1 : 0x8888, 2 : 0x4444}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x0B    # DUP A
+        mpu.memory[0x201] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #swp
+
+    def test_swap_TOS_and_NOS_register_stack_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x8888, 1 : 0x4444, 2 : 0x2222}
+
+        p = copy.copy(mpu.p)
+        a = {0 : 0x4444, 1 : 0x8888, 2 : 0x2222}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x1B    # SWP A
+        mpu.memory[0x201] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #rot a
+
+    def test_rotate_register_stack_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x8888, 1 : 0x4444, 2 : 0x2222}
+
+        p = copy.copy(mpu.p)
+        a = {0 : 0x4444, 1 : 0x2222, 2 : 0x8888}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x2B    # ROT A
+        mpu.memory[0x201] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #tai (ind dup)
+
+    def test_word_transfer_a_to_ip(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x8888, 1 : 0x4444, 2 : 0x2222}
+        mpu.ip = 0x5555
+        p = copy.copy(mpu.p)
+        a = {0 : 0x8888, 1 : 0x4444, 2 : 0x2222}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = 0x8888
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x9B    # IND
+        mpu.memory[0x201] = 0x0B    # DUP A
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #tia (siz dup)
+
+    def test_word_transfer_ip_to_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x8888, 1 : 0x4444, 2 : 0x2222}
+        mpu.ip = 0x5555
+        p = copy.copy(mpu.p)
+        a = {0 : 0x5555, 1 : 0x4444, 2 : 0x2222}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = 0x5555
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0xAB    # SIZ
+        mpu.memory[0x201] = 0x0B    # DUP A
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #xai (isz dup)
+
+    def test_word_exchange_a_and_ip(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x8888, 1 : 0x4444, 2 : 0x2222}
+        mpu.ip = 0x5555
+        p = copy.copy(mpu.p)
+        a = {0 : 0x5555, 1 : 0x4444, 2 : 0x2222}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = 0x8888
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0xBB    # ISZ
+        mpu.memory[0x201] = 0x0B    # DUP A
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #bsw (ind swp)
+
+    def test_byte_swap_TOS_register_stack_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x7FFF, 1 : 0x4444, 2 : 0x2222}
+        p = copy.copy(mpu.p)
+        a = {0 : 0xFF7F, 1 : 0x4444, 2 : 0x2222}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x9B    # IND
+        mpu.memory[0x201] = 0x1B    # SWP A
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    #rev (ind rot)
+
+    def test_reverse_TOS_register_stack_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.a = {0 : 0x8CAE, 1 : 0x4444, 2 : 0x2222}
+        p = copy.copy(mpu.p)
+        a = {0 : 0x7531, 1 : 0x4444, 2 : 0x2222}
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+
+        mpu.memory[0x200] = 0x9B    # IND
+        mpu.memory[0x201] = 0x2B    # ROT A
+        mpu.memory[0x202] = 0x00
+
+        mon.do_goto('200')
+
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
 
 def test_suite():
     return unittest.findTestCases(sys.modules[__name__])

@@ -34,8 +34,8 @@ class MPU():
     sp = dict()
     ip = int()
     wp = int()
-    pc = int()
     p  = int() | BREAK
+    pc = int()
 
     # declare Prefix Byte Boolean Flags Registers
 
@@ -100,7 +100,7 @@ class MPU():
         self.reset()
 
     def reprformat(self):
-        return ("%s PC   AC   XR   YR   SP   VM  NVMBDIZC\n"
+        return ("%sPC   AC   XR   YR   SP   VM  NVMBDIZC\n"
                 "%s: %04X %04X %04X %04X %04X %04X %s\n"
                 "%s  %04X %04X %04X %04X %04X DL YXSIZ\n"
                 "%s  %04X %04X %04X           %d%d %d%d%d%d%d\n")
@@ -1277,13 +1277,13 @@ class MPU():
             addr = self.addrMask & (self.x[0] + 1)
             if self.x[0] < 512:
                 hiAddr = self.hiByteMask & self.x[0]
-                addr = hiAddr + self.byteMask & addr
+                addr = hiAddr + (self.byteMask & addr)
             data = self.rdDM(addr)
             if self.siz:
                 addr = self.addrMask & (addr + 1)
                 if self.x[0] < 512:
                     hiAddr = self.hiByteMask & self.x[0]
-                    addr = hiAddr + self.byteMask & addr
+                    addr = hiAddr + (self.byteMask & addr)
                 data = (self.rdDM(addr) << 8) + data
             self.x[0] = addr
         else:
@@ -1294,13 +1294,13 @@ class MPU():
             addr = self.addrMask & (self.sp[sel] + 1)
             if self.sp[sel] < 512:
                 hiAddr = self.hiByteMask & self.sp[sel]
-                addr = hiAddr + self.byteMask & addr
+                addr = hiAddr + (self.byteMask & addr)
             data = self.rdDM(addr)
             if self.siz:
                 addr = self.addrMask & (addr + 1)
                 if self.sp[sel] < 512:
                     hiAddr = self.hiByteMask & self.sp[sel]
-                    addr = hiAddr + self.byteMask & addr
+                    addr = hiAddr + (self.byteMask & addr)
                 data = (self.rdDM(addr) << 8) + data
             self.sp[sel] = addr
 
@@ -2103,16 +2103,17 @@ class MPU():
     def opDEX(self):
         if self.osx:
             if self.MODE & self.p:
-                sel = 1
-            else:
-                sel = 0
+                if self.ind: stk = 0
+                else: stk = 1
+            else: stk = 0
+
             if self.siz:
-                self.sp[sel] = self.wordMask & (self.sp[sel] - 1)
-                self.FlagsNZ(self.sp[sel])
+                self.sp[stk] = self.wordMask & (self.sp[stk] - 1)
+                self.FlagsNZ(self.sp[stk])
             else:
-                self.sp[sel] = self.byteMask & (self.sp[sel] - 1)
-                self.FlagsNZ(self.sp[sel])
-                self.sp[sel] |= 0x0100
+                self.sp[stk] = self.byteMask & (self.sp[stk] - 1)
+                self.FlagsNZ(self.sp[stk])
+                self.sp[stk] |= 0x0100
         elif self.oax:
             if self.siz:
                 self.a[0] = self.wordMask & (self.a[0] - 1)
@@ -2128,17 +2129,13 @@ class MPU():
 
     def opDEY(self):
         if self.oay:
-            if self.siz:
-                self.a[0] = self.wordMask & (self.a[0] - 1)
-            else:
-                self.a[0] = self.byteMask & (self.a[0] - 1)
-            self.FlagsNZ(self.a[0])
+            reg = self.a
+        else: reg = self.y
+        if self.siz:
+            reg[0] = self.wordMask & (reg[0] - 1)
         else:
-            if self.siz:
-                self.y[0] = self.wordMask & (self.y[0] - 1)
-            else:
-                self.y[0] = self.byteMask & (self.y[0] - 1)
-            self.FlagsNZ(self.y[0])
+            reg[0] = self.byteMask & (reg[0] - 1)
+        self.FlagsNZ(reg[0])
 
     def opDECm(self, data):
         tmp = int(data)
