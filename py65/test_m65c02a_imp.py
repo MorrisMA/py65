@@ -1,6 +1,7 @@
 import unittest
 import os
 import sys
+import copy
 
 sys.path.append(os.getcwd())
 
@@ -1863,18 +1864,100 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x201, mpu.pc)
         self.assertEqual(0x7D,  mpu.p)
     
+    # tya.w (siz tya)
+    
+    def test_word_trasfer_y_to_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xAB    # SIZ
+        mpu.memory[0x201] = 0x98    # TYA
+        mpu.memory[0x202] = 0x00
+        # test NZ 00 => 01 when loading 0
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0x0000
+        mpu.a[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 00 => 10 when loading negative
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0xFFFF
+        mpu.a[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 00 => 00 when loading non-zero, positive
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0x5555
+        mpu.a[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 01 => 01 when loading 0
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0x0000
+        mpu.a[0] = 0xFFFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 01 => 10 when loading negative
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0xFFFF
+        mpu.a[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 01 => 00 when loading non-zero, positive
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0x5555
+        mpu.a[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 10 => 01 when loading 0
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0x0000
+        mpu.a[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 10 => 10 when loading negative
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0xFFFF
+        mpu.a[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 10 => 00 when loading non-zero, positive
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.y[0] = 0x5555
+        mpu.a[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+    
     # tay
     
     def test_trasfer_a_to_y(self):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+        mpu.memory[0x200] = 0xA8    # TAY
+        mpu.memory[0x201] = 0x00
         # test NZ 00 => 01 when loading 0
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x0000
         mpu.y[0] = 0x7FFF
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1883,8 +1966,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0xFFFF
         mpu.y[0] = 0x7FFF
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1893,8 +1974,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x5555
         mpu.y[0] = 0x7FFF
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1903,8 +1982,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x0000
         mpu.y[0] = 0xFFFF
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1913,8 +1990,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x7FFF
         mpu.y[0] = 0x0000
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1923,8 +1998,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x5555
         mpu.y[0] = 0x0000
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1933,8 +2006,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x0000
         mpu.y[0] = 0x8000
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1943,8 +2014,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x7FFF
         mpu.y[0] = 0x8000
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
@@ -1953,12 +2022,92 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x5555
         mpu.y[0] = 0x8000
-        mpu.memory[0x200] = 0xA8    # TAY
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.y[0])
         self.assertEqual(0x201, mpu.pc)
         self.assertEqual(0x7D,  mpu.p)
+    
+    # tay.w (siz tay)
+    
+    def test_word_trasfer_a_to_y(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xAB    # SIZ
+        mpu.memory[0x201] = 0xA8    # TAY
+        mpu.memory[0x202] = 0x00
+        # test NZ 00 => 01 when loading 0
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x0000
+        mpu.y[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 00 => 10 when loading negative
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0xFFFF
+        mpu.y[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 00 => 00 when loading non-zero, positive
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x5555
+        mpu.y[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 01 => 01 when loading 0
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x0000
+        mpu.y[0] = 0xFFFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 01 => 10 when loading negative
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0xFFFF
+        mpu.y[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 01 => 00 when loading non-zero, positive
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x5555
+        mpu.y[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 10 => 01 when loading 0
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x0000
+        mpu.y[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 10 => 10 when loading negative
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0xFFFF
+        mpu.y[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 10 => 00 when loading non-zero, positive
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x5555
+        mpu.y[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.y[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
     
     # txa
     
@@ -2057,18 +2206,100 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x201, mpu.pc)
         self.assertEqual(0x7D,  mpu.p)
     
+    # txa.w (siz txa)
+    
+    def test_word_trasfer_x_to_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xAB    # SIZ
+        mpu.memory[0x201] = 0x8A    # TXA
+        mpu.memory[0x202] = 0x00
+        # test NZ 00 => 01 when loading 0
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0x0000
+        mpu.a[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 00 => 10 when loading negative
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0xFFFF
+        mpu.a[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 00 => 00 when loading non-zero, positive
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0x5555
+        mpu.a[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 01 => 01 when loading 0
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0x0000
+        mpu.a[0] = 0xFFFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 01 => 10 when loading negative
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0xFFFF
+        mpu.a[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 01 => 00 when loading non-zero, positive
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0x5555
+        mpu.a[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 10 => 01 when loading 0
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0x0000
+        mpu.a[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x0000,  mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 10 => 10 when loading negative
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0xFFFF
+        mpu.a[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 10 => 00 when loading non-zero, positive
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.x[0] = 0x5555
+        mpu.a[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.a[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+    
     # tax
     
     def test_trasfer_a_to_x(self):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+        mpu.memory[0x200] = 0xAA    # TAX
+        mpu.memory[0x201] = 0x00
         # test NZ 00 => 01 when loading 0
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x0000
         mpu.x[0] = 0x7FFF
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2077,8 +2308,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0xFFFF
         mpu.x[0] = 0x7FFF
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2087,8 +2316,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x5555
         mpu.x[0] = 0x7FFF
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2097,8 +2324,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x0000
         mpu.x[0] = 0xFFFF
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] - 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2107,8 +2332,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x7FFF
         mpu.x[0] = 0x0000
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2117,8 +2340,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x5555
         mpu.x[0] = 0x0000
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2127,8 +2348,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x0000
         mpu.x[0] = 0x8000
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2137,8 +2356,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x7FFF
         mpu.x[0] = 0x8000
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2147,12 +2364,92 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.a[0] = 0x5555
         mpu.x[0] = 0x8000
-        mpu.memory[0x200] = 0xAA    # TAX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
         self.assertEqual(0x7D,  mpu.p)
+
+    # tax.w (siz tax)
+    
+    def test_word_trasfer_a_to_x(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xAB    # SIZ
+        mpu.memory[0x201] = 0xAA    # TAX
+        mpu.memory[0x202] = 0x00
+        # test NZ 00 => 01 when loading 0
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x0000
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 00 => 10 when loading negative
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0xFFFF
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 00 => 00 when loading non-zero, positive
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x5555
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 01 => 01 when loading 0
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x0000
+        mpu.x[0] = 0xFFFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 01 => 10 when loading negative
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0xFFFF
+        mpu.x[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 01 => 00 when loading non-zero, positive
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x5555
+        mpu.x[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 10 => 01 when loading 0
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x0000
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 10 => 10 when loading negative
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0xFFFF
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 10 => 00 when loading non-zero, positive
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x5555
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
 
     # txs
     
@@ -2160,28 +2457,58 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+        mpu.memory[0x200] = 0x9A    # TXS
+        mpu.memory[0x201] = 0x00
         # Transfer x to s - kernel mode
         mpu.p = 0xFD
         mpu.x[0]  = 0x00FF
         mpu.sp[0] = 0x0000
         mpu.sp[1] = 0x0000
-        mpu.memory[0x200] = 0x9A    # TXS
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
-        self.assertEqual(0x1FF, mpu.sp[1])
-        self.assertEqual(0x000, mpu.sp[0])
-        self.assertEqual(0xFD,  mpu.p)
+        self.assertEqual(0x01FF, mpu.sp[1])
+        self.assertEqual(0x0000, mpu.sp[0])
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
         # Transfer x to s - kernel mode
         mpu.p = 0xDD
         mpu.x[0]  = 0x00FF
         mpu.sp[0] = 0x0000
         mpu.sp[1] = 0x8000
-        mpu.memory[0x200] = 0x9A    # TXS
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x8000, mpu.sp[1])
-        self.assertEqual(0x1FF,  mpu.sp[0])
-        self.assertEqual(0xDD,   mpu.p)
+        self.assertEqual(0x01FF, mpu.sp[0])
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(0xDD, mpu.p)
+        
+    # txs.w (siz txs)
+    
+    def test_word_transfer_x_to_s(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xAB    # SIZ
+        mpu.memory[0x201] = 0x9A    # TXS
+        mpu.memory[0x202] = 0x00
+        # Transfer x to s - kernel mode
+        mpu.p = 0xFD
+        mpu.x[0]  = 0x00FF
+        mpu.sp[0] = 0x0000
+        mpu.sp[1] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x00FF, mpu.sp[1])
+        self.assertEqual(0x0000, mpu.sp[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # Transfer x to s - kernel mode
+        mpu.p = 0xDD
+        mpu.x[0]  = 0x00FF
+        mpu.sp[0] = 0x0000
+        mpu.sp[1] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x8000, mpu.sp[1])
+        self.assertEqual(0x00FF, mpu.sp[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xDD, mpu.p)
         
     # tsx
     
@@ -2189,13 +2516,13 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+        mpu.memory[0x200] = 0xBA    # TSX
+        mpu.memory[0x201] = 0x00
         # Transfer s to x - kernel mode
         # test NZ 00 => 01 when loading 0
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x0000
         mpu.x[0] = 0x7FFF
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2204,8 +2531,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x80FF
         mpu.x[0] = 0x7FFF
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2214,8 +2539,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x5555
         mpu.x[0] = 0x7FFF
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2224,8 +2547,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x0000
         mpu.x[0] = 0xFFFF
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] - 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2234,8 +2555,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x7FFF
         mpu.x[0] = 0x0000
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2244,8 +2563,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x5555
         mpu.x[0] = 0x0000
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2254,8 +2571,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x8000
         mpu.x[0] = 0x8000
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x00,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2264,8 +2579,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0x7FFF
         mpu.x[0] = 0x8000
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0xFF,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2274,8 +2587,6 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
         mpu.sp[1] = 0xFF55
         mpu.x[0] = 0x8000
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x55,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
@@ -2284,14 +2595,103 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.p = 0xDD    # P.4 not physically implemented, do not set to 0
         mpu.sp[0] = 0xFF7F
         mpu.x[0] = 0x8000
-        mpu.memory[0x200] = 0xBA    # TSX
-        mpu.memory[0x201] = 0x00
         mon.do_goto('200')
         self.assertEqual(0x7F,  mpu.x[0])
         self.assertEqual(0x201, mpu.pc)
         self.assertEqual(0x5D,  mpu.p)
 
-    # txu
+    # tsx.w (siz tsx)
+    
+    def test_transfer_s_to_x(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xAB    # SIZ
+        mpu.memory[0x201] = 0xBA    # TSX
+        mpu.memory[0x202] = 0x00
+        # Transfer s to x - kernel mode
+        # test NZ 00 => 01 when loading 0
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0x0000
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 00 => 10 when loading negative
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0x80FF
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x80FF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 00 => 00 when loading non-zero, positive
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0x5555
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 01 => 01 when loading 0
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0x0000
+        mpu.x[0] = 0xFFFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 01 => 10 when loading negative
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0xFFFF
+        mpu.x[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 01 => 00 when loading non-zero, positive
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0x5555
+        mpu.x[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 10 => 01 when loading 0
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0x0000
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 10 => 10 when loading negative
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0xFFFF
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 10 => 00 when loading non-zero, positive
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.sp[1] = 0x7F55
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x7F55, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test transfer of s to x in user mode
+        mpu.p = 0xDD    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x07FF
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x07FF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x5D, mpu.p)
+
+    # txu (ind txs)
     
     def test_transfer_x_to_u(self):
         stdout = StringIO()
@@ -2318,7 +2718,34 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x1FF, mpu.sp[1])
         self.assertEqual(0xDD,  mpu.p)
         
-    # tux
+    # txu.w (isz txs)
+    
+    def test_word_transfer_x_to_u(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xBB    # ISZ
+        mpu.memory[0x201] = 0x9A    # TXS
+        mpu.memory[0x202] = 0x00
+        # Transfer x to u - kernel mode
+        mpu.p = 0xFD
+        mpu.x[0]  = 0x007F
+        mpu.sp[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x007F, mpu.sp[0])
+        self.assertEqual(0x1FF, mpu.sp[1])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD,  mpu.p)
+        # Transfer x to u - user mode
+        mpu.p = 0xDD
+        mpu.x[0]  = 0x0080
+        mpu.sp[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x0080, mpu.sp[0])
+        self.assertEqual(0x1FF, mpu.sp[1])
+        self.assertEqual(0xDD, mpu.p)
+        
+    # tux (ind tsx)
     
     def test_transfer_u_to_x(self):
         stdout = StringIO()
@@ -2395,7 +2822,89 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x55,  mpu.x[0])
         self.assertEqual(0x5D,  mpu.p)
 
-    # tsa (oax tsx) [tsa (osx txa)]
+    # tux.w (isz tsx)
+    
+    def test_word_transfer_u_to_x(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xBB    # ISZ
+        mpu.memory[0x201] = 0xBA    # TSX
+        mpu.memory[0x202] = 0x00
+        # Transfer u to x - kernel mode
+        # test NZ 00 => 01 when loading 0
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x0000
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 00 => 10 when loading negative
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x8080
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x8080, mpu.x[0])
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 00 => 00 when loading non-zero, positive
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x5555
+        mpu.x[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 01 => 01 when loading 0
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x0000
+        mpu.x[0] = 0xFFFF
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 01 => 10 when loading negative
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0xEFFF
+        mpu.x[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xEFFF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 01 => 00 when loading non-zero, positive
+        mpu.p = 0x7F    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x5555
+        mpu.x[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+        # test NZ 10 => 01 when loading 0
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x0000
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x0000, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7F, mpu.p)
+        # test NZ 10 => 10 when loading negative
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x80FF
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x80FF, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0xFD, mpu.p)
+        # test NZ 10 => 00 when loading non-zero, positive
+        mpu.p = 0xFD    # P.4 not physically implemented, do not set to 0
+        mpu.sp[0] = 0x5555
+        mpu.x[0] = 0x8000
+        mon.do_goto('200')
+        self.assertEqual(0x5555, mpu.x[0])
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(0x7D, mpu.p)
+
+    # tsa (oax tsx)
     
     def test_transfer_s_to_a(self):
         stdout = StringIO()
@@ -2417,7 +2926,30 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x7F,  mpu.a[0])
         self.assertEqual(0x202, mpu.pc)
     
-    # tas (oax txs) [tas (osx tax)]
+    # tsa.w (oax siz tsx)
+    
+    def test_word_transfer_s_to_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xEB    # OAX
+        mpu.memory[0x201] = 0xAB    # SIZ
+        mpu.memory[0x202] = 0xBA    # TXS
+        mpu.memory[0x203] = 0x00
+        mpu.sp[0] = 0x017F
+        mpu.sp[1] = 0x01FF
+        # test transfer s to a in kernel mode: sp[1] => a[0]
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mon.do_goto('200')
+        self.assertEqual(0x1FF, mpu.a[0])
+        self.assertEqual(0x203, mpu.pc)
+        # test transfer s to a in user mode: sp[0] => a
+        mpu.p = 0x5D    # P.4 not physically implemented, do not set to 0
+        mon.do_goto('200')
+        self.assertEqual(0x17F, mpu.a[0])
+        self.assertEqual(0x203, mpu.pc)
+    
+    # tas (oax txs)
     
     def test_transfer_a_to_s(self):
         stdout = StringIO()
@@ -2441,6 +2973,31 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x17F, mpu.sp[0])
         self.assertEqual(0x202, mpu.pc)
     
+    # tas.w (oax siz txs)
+    
+    def test_word_transfer_a_to_s(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xEB    # OAX
+        mpu.memory[0x201] = 0xAB    # SIZ
+        mpu.memory[0x202] = 0x9A    # TXS
+        mpu.memory[0x203] = 0x00
+        mpu.sp[0] = 0x0000
+        mpu.sp[1] = 0x0000
+        # test transfer a to s in kernel mode: a[0] => sp[1]
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x7FFF
+        mon.do_goto('200')
+        self.assertEqual(0x7FFF, mpu.sp[1])
+        self.assertEqual(0x203, mpu.pc)
+        # test transfer a to s in user mode: a[0] => sp[0]
+        mpu.p = 0x5D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0x047F
+        mon.do_goto('200')
+        self.assertEqual(0x47F, mpu.sp[0])
+        self.assertEqual(0x203, mpu.pc)
+    
     # tua (oax ind tsx) [tua (osx ind txa)]
     
     def test_transfer_u_to_a(self):
@@ -2459,7 +3016,25 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x7F,  mpu.a[0])
         self.assertEqual(0x203, mpu.pc)
     
-    # tau (oax ind txs) [tau (osx ind tax)]
+    # tua.w (oax isz tsx)
+    
+    def test_word_transfer_u_to_a(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xEB    # OAX
+        mpu.memory[0x201] = 0xBB    # ISZ
+        mpu.memory[0x202] = 0xBA    # TSX
+        mpu.memory[0x203] = 0x00
+        mpu.sp[0] = 0x017F
+        mpu.sp[1] = 0x01FD
+        # test transfer u to a in kernel mode: sp[0] => a[0]
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mon.do_goto('200')
+        self.assertEqual(0x17F, mpu.a[0])
+        self.assertEqual(0x203, mpu.pc)
+    
+    # tau (oax ind txs)
     
     def test_transfer_a_to_u(self):
         stdout = StringIO()
@@ -2478,6 +3053,25 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x1FF, mpu.sp[0])
         self.assertEqual(0x203, mpu.pc)
       
+    # tau.w (oax isz txs)
+    
+    def test_word_transfer_a_to_u(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xEB    # OAX
+        mpu.memory[0x201] = 0xBB    # ISZ
+        mpu.memory[0x202] = 0x9A    # TXS
+        mpu.memory[0x203] = 0x00
+        mpu.sp[0] = 0x0000
+        mpu.sp[1] = 0x0000
+        # test transfer a to u in kernel mode: a[0] => sp[0]
+        mpu.p = 0x7D    # P.4 not physically implemented, do not set to 0
+        mpu.a[0] = 0xEFFF
+        mon.do_goto('200')
+        self.assertEqual(0xEFFF, mpu.sp[0])
+        self.assertEqual(0x203, mpu.pc)
+      
     # txy (oay txa)
     
     def test_transfer_x_to_y(self):
@@ -2493,7 +3087,23 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0xFF, mpu.y[0])
         self.assertEqual(0x202, mpu.pc)
     
-    # tyx (oay tax)
+    # txy.w (oay siz txa)
+    
+    def test_word_transfer_x_to_y(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xFB    # OAY
+        mpu.memory[0x201] = 0xAB    # SIZ
+        mpu.memory[0x202] = 0x8A    # TXA
+        mpu.memory[0x203] = 0x00
+        mpu.x[0] = 0xFFFF
+        mpu.y[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.y[0])
+        self.assertEqual(0x203, mpu.pc)
+    
+    # tyx (oax tya)
 
     def test_transfer_y_to_x(self):
         stdout = StringIO()
@@ -2508,6 +3118,471 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0xFF, mpu.x[0])
         self.assertEqual(0x202, mpu.pc)
     
+    # tyx.w (oax siz tya)
+
+    def test_word_transfer_y_to_x(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.memory[0x200] = 0xEB    # OAX
+        mpu.memory[0x201] = 0xAB    # SIZ
+        mpu.memory[0x202] = 0x98    # TYA
+        mpu.memory[0x203] = 0x00
+        mpu.y[0] = 0xFFFF
+        mpu.x[0] = 0x0000
+        mon.do_goto('200')
+        self.assertEqual(0xFFFF, mpu.x[0])
+        self.assertEqual(0x203, mpu.pc)
+    
+    # nop
+
+    def test_nop(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # rsv1
+
+    def test_reserved_1(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0x22    # RSV1
+        mpu.memory[0x201] = 0x01
+        mpu.memory[0x202] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # rsv2
+
+    def test_reserved_2(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0x42    # RSV2
+        mpu.memory[0x201] = 0x02
+        mpu.memory[0x202] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # rsv3
+
+    def test_reserved_3(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0x62    # RSV3
+        mpu.memory[0x201] = 0x03
+        mpu.memory[0x202] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # rsv4
+
+    def test_reserved_4(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0x82    # RSV4
+        mpu.memory[0x201] = 0x04
+        mpu.memory[0x202] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # osx
+
+    def test_osx(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.oax = True
+        mpu.oay = True
+        mpu.memory[0x200] = 0x8B    # OSX
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(True, mpu.osx)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(True, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(False, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # ind
+
+    def test_ind(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0x9B    # IND
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(True, mpu.ind)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.ind)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # siz
+
+    def test_siz(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0xAB    # IND
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(True, mpu.siz)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.siz)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # isz
+
+    def test_isz(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.memory[0x200] = 0xBB    # ISZ
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(True, mpu.ind)
+        self.assertEqual(True, mpu.siz)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.ind)
+        self.assertEqual(False, mpu.siz)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # osz
+
+    def test_osz(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.oax = True
+        mpu.oay = True
+        mpu.memory[0x200] = 0xCB    # OSZ
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(True, mpu.osx)
+        self.assertEqual(True, mpu.siz)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(True, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(False, mpu.siz)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(False, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # ois
+
+    def test_ois(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.oax = True
+        mpu.oay = True
+        mpu.memory[0x200] = 0xDB    # OSZ
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(True, mpu.osx)
+        self.assertEqual(True, mpu.ind)
+        self.assertEqual(True, mpu.siz)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(True, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(False, mpu.ind)
+        self.assertEqual(False, mpu.siz)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(False, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # oax
+
+    def test_oax(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.osx = True
+        mpu.oay = True
+        mpu.memory[0x200] = 0xEB    # OAX
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(True,  mpu.oax)
+        self.assertEqual(False, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(False, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
+    # oay
+
+    def test_oay(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        mpu.osx = False
+        mpu.oax = True
+        mpu.memory[0x200] = 0xFB    # OAY
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(True, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(False, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        
+        mpu.osx = True
+        mpu.oax = False
+        mpu.memory[0x200] = 0xFB    # OAY
+        mpu.memory[0x201] = 0x00
+        mon.do_goto('200')
+        self.assertEqual(True, mpu.osx)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(True, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        mpu.memory[0x200] = 0xEA    # NOP
+        mon.do_goto('200')
+        self.assertEqual(False, mpu.osx)
+        self.assertEqual(False, mpu.oax)
+        self.assertEqual(False, mpu.oay)
+        self.assertEqual(0x201, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+
 def test_suite():
     return unittest.findTestCases(sys.modules[__name__])
 

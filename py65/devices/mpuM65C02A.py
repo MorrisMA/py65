@@ -3586,20 +3586,21 @@ class MPU():
     @instruction(name="OSZ", mode="imp", cycles=1)
     def inst_0xCB(self):
         self.osx = True
-        self.oax = False
         self.siz = True
+        self.oax = False
 
     @instruction(name="OIS", mode="imp", cycles=1)
     def inst_0xDB(self):
         self.osx = True
-        self.oax = False
         self.ind = True
         self.siz = True
+        self.oax = False
 
     @instruction(name="OAX", mode="imp", cycles=1)
     def inst_0xEB(self):
         self.oax = True
         self.osx = False
+        self.oay = False
 
     @instruction(name="OAY", mode="imp", cycles=1)
     def inst_0xFB(self):
