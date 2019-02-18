@@ -19,12 +19,107 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
     # rti
     
     def test_return_from_interrupt_using_default_stack(self):
-        self.assertEqual(0, 1)
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        self.assertEqual(0x30, mpu.p)    # Interrupts Kernel Mode Only
+        mpu.sp = {0 : 0x1FF, 1 : 0x1FC}
+
+        mpu.memory[0x200] = 0x40    # RTI
+        mpu.memory[0x201] = 0xEA    # NOP
+        mpu.memory[0x202] = 0x00
+
+        mpu.memory[0x1FF] = 0x02    # PCH
+        mpu.memory[0x1FE] = 0x00    # PCL
+        mpu.memory[0x1FD] = 0xD3    # P
+
+        p = 0xD3
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = {0 : 0x1FF, 1 : 0x1FF}
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        
+        mon.do_goto('200')
+        
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
     
+        mpu.p = 0x30                # Interrupts Kernel Mode Only
+        mpu.sp = {0 : 0x1FF, 1 : 0x1FD}
+
+        mpu.memory[0x100] = 0x02    # PCH
+        mpu.memory[0x1FF] = 0x00    # PCL
+        mpu.memory[0x1FE] = 0xDF    # P
+
+        p = 0xDF
+        s = {0 : 0x1FF, 1 : 0x100}
+        
+        mon.do_goto('200')
+
+        self.assertEqual(p, mpu.p)
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+
     # rts
 
     def test_return_from_subroutine_using_default_stack(self):
-        self.assertEqual(0, 1)
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.sp = {0 : 0x1FF, 1 : 0x1FD}
+
+        mpu.memory[0x200] = 0x60    # RTS
+        mpu.memory[0x201] = 0xEA    # NOP
+        mpu.memory[0x202] = 0x00
+
+        mpu.memory[0x1FF] = 0x02    # PCH
+        mpu.memory[0x1FE] = 0x00    # PCL
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = copy.copy(mpu.x)
+        y = copy.copy(mpu.y)
+        s = {0 : 0x1FF, 1 : 0x1FF}
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        
+        mon.do_goto('200')
+        
+        self.assertEqual(0x202, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+    
+        mpu.p = 0x10
+        mpu.sp = {0 : 0x2FE, 1 : 0x1FF}
+
+        mpu.memory[0x300] = 0x02    # PCH
+        mpu.memory[0x2FF] = 0x00    # PCL
+
+        p = 0x10
+        s = {0 : 0x300, 1 : 0x1FF}
+        
+        mon.do_goto('200')
+
+        self.assertEqual(p, mpu.p)
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
     
     # rsv1
 
@@ -32,6 +127,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+
         p = copy.copy(mpu.p)
         a = copy.copy(mpu.a)
         x = copy.copy(mpu.x)
@@ -39,10 +135,13 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         s = copy.copy(mpu.sp)
         i = copy.copy(mpu.ip)
         w = copy.copy(mpu.wp)
+
         mpu.memory[0x200] = 0x22    # RSV1
         mpu.memory[0x201] = 0x01
         mpu.memory[0x202] = 0x00
+        
         mon.do_goto('200')
+        
         self.assertEqual(0x202, mpu.pc)
         self.assertEqual(p, mpu.p)
         for j in range(3):
@@ -60,6 +159,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+
         p = copy.copy(mpu.p)
         a = copy.copy(mpu.a)
         x = copy.copy(mpu.x)
@@ -67,10 +167,13 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         s = copy.copy(mpu.sp)
         i = copy.copy(mpu.ip)
         w = copy.copy(mpu.wp)
+
         mpu.memory[0x200] = 0x42    # RSV2
         mpu.memory[0x201] = 0x02
         mpu.memory[0x202] = 0x00
+
         mon.do_goto('200')
+
         self.assertEqual(0x202, mpu.pc)
         self.assertEqual(p, mpu.p)
         for j in range(3):
@@ -88,6 +191,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+
         p = copy.copy(mpu.p)
         a = copy.copy(mpu.a)
         x = copy.copy(mpu.x)
@@ -95,10 +199,13 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         s = copy.copy(mpu.sp)
         i = copy.copy(mpu.ip)
         w = copy.copy(mpu.wp)
+
         mpu.memory[0x200] = 0x62    # RSV3
         mpu.memory[0x201] = 0x03
         mpu.memory[0x202] = 0x00
+
         mon.do_goto('200')
+
         self.assertEqual(0x202, mpu.pc)
         self.assertEqual(p, mpu.p)
         for j in range(3):
@@ -116,6 +223,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
+
         p = copy.copy(mpu.p)
         a = copy.copy(mpu.a)
         x = copy.copy(mpu.x)
@@ -123,10 +231,13 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         s = copy.copy(mpu.sp)
         i = copy.copy(mpu.ip)
         w = copy.copy(mpu.wp)
+
         mpu.memory[0x200] = 0x82    # RSV4
         mpu.memory[0x201] = 0x04
         mpu.memory[0x202] = 0x00
+
         mon.do_goto('200')
+
         self.assertEqual(0x202, mpu.pc)
         self.assertEqual(p, mpu.p)
         for j in range(3):
@@ -3825,12 +3936,109 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
     # rti.s (osx rti)
     
     def test_return_from_interrupt_using_alternate_stack(self):
-        self.assertEqual(0, 1)
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        self.assertEqual(0x30, mpu.p)    # Interrupts Kernel Mode Only
+        mpu.x = {0 : 0x1FC, 1 : 0x4444, 2 : 0x2222}
+
+        mpu.memory[0x200] = 0x8B    # OSX
+        mpu.memory[0x201] = 0x40    # RTI
+        mpu.memory[0x202] = 0xEA    # NOP
+        mpu.memory[0x203] = 0x00
+
+        mpu.memory[0x1FF] = 0x02    # PCH
+        mpu.memory[0x1FE] = 0x01    # PCL
+        mpu.memory[0x1FD] = 0xD3    # P
+
+        p = 0xD3
+        a = copy.copy(mpu.a)
+        x = {0 : 0x1FF, 1 : 0x4444, 2 : 0x2222}
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        
+        mon.do_goto('200')
+        
+        self.assertEqual(0x203, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
     
+        mpu.p = 0x30
+        mpu.x = {0 : 0x1FD, 1 : 0x4444, 2 : 0x2222}
+
+        mpu.memory[0x100] = 0x02    # PCH
+        mpu.memory[0x1FF] = 0x01    # PCL
+        mpu.memory[0x1FE] = 0xDF    # P
+
+        p = 0xDF
+        x = {0 : 0x100, 1 : 0x4444, 2 : 0x2222}
+        
+        mon.do_goto('200')
+        
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(x[j], mpu.x[j])
+
     # rts.s (osx rts)
     
     def test_return_from_subroutine_using_alternate_stack(self):
-        self.assertEqual(0, 1)
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+        mpu.x = {0 : 0x1FD, 1 : 0x4444, 2 : 0x2222}
+
+        mpu.memory[0x200] = 0x8B    # OSX
+        mpu.memory[0x201] = 0x60    # RTS
+        mpu.memory[0x202] = 0xEA    # NOP
+        mpu.memory[0x203] = 0x00
+
+        mpu.memory[0x1FF] = 0x02    # PCH
+        mpu.memory[0x1FE] = 0x01    # PCL
+
+        p = copy.copy(mpu.p)
+        a = copy.copy(mpu.a)
+        x = {0 : 0x1FF, 1 : 0x4444, 2 : 0x2222}
+        y = copy.copy(mpu.y)
+        s = copy.copy(mpu.sp)
+        i = copy.copy(mpu.ip)
+        w = copy.copy(mpu.wp)
+        
+        mon.do_goto('200')
+        
+        self.assertEqual(0x203, mpu.pc)
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(a[j], mpu.a[j])
+            self.assertEqual(x[j], mpu.x[j])
+            self.assertEqual(y[j], mpu.y[j])
+        for j in range(2):
+            self.assertEqual(s[j], mpu.sp[j])
+        self.assertEqual(i, mpu.ip)
+        self.assertEqual(w, mpu.wp)
+    
+        mpu.p = 0x10
+        mpu.x = {0 : 0x2FE, 1 : 0x4444, 2 : 0x2222}
+
+        mpu.memory[0x300] = 0x02    # PCH
+        mpu.memory[0x2FF] = 0x01    # PCL
+
+        p = copy.copy(mpu.p)
+        x = {0 : 0x300, 1 : 0x4444, 2 : 0x2222}
+        
+        mon.do_goto('200')
+        
+        self.assertEqual(p, mpu.p)
+        for j in range(3):
+            self.assertEqual(x[j], mpu.x[j])
     
     # php.s
     

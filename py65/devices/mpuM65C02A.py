@@ -2470,7 +2470,7 @@ class MPU():
         
         self.ip = self.addrMask & (self.wp + 2)
         
-        self.opNxt()
+        self.opNXT()
 #
 #   Miscellaneous Instructions
 #
