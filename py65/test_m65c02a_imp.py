@@ -2524,40 +2524,47 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
-        codeFieldPtr = 0x202
-        mpu.ip = codeFieldPtr       # Codefield Pointer
-        mpu.x = {0 : 0x17F, 1 : 0x4444, 2 : 0x2222}
+        mpu.x[0] = 0x17D
 
-        mpu.memory[0x200] = 0x3B    # NXT - Primary Forth WORD Exit (pli nxt)
-        mpu.memory[0x201] = 0x00    # Initial NXT not implemented as (ind nxt)
+        # ITC Forth Exit
+        mpu.memory[0x200] = 0x6B    # PLI - Forth WORD Indirect Exit (ind inxt)
+        # ITC Forth Next
+        mpu.memory[0x201] = 0x9B    # IND
+        mpu.memory[0x202] = 0x3B    # NXT
+        # ITC Forth Enter
+        mpu.memory[0x203] = 0x9B    # IND - Forth WORD Indirect Enter (ind ent)
+        mpu.memory[0x204] = 0x7B    # ENT
         # Forth WORD - Secondary Code Field
-        mpu.memory[0x202] = 0x05    # Pointer to header #1
-        mpu.memory[0x203] = 0x02
-        mpu.memory[0x204] = 0x00    # Pointer to header #2 (partial)
+        mpu.memory[0x205] = 0x07    # Pointer to header #1
+        mpu.memory[0x206] = 0x02
         # Forth WORD - Secondary
-        mpu.memory[0x205] = 0x9B    # header: IND (Secondary WORD)
-        mpu.memory[0x206] = 0x7B    # header: ENT (Secondary WORD)
-        mpu.memory[0x207] = 0x0D    # Pointer to header #1
-        mpu.memory[0x208] = 0x02
-        mpu.memory[0x209] = 0x00    # Pointer to header #2 (not implemented)
-        mpu.memory[0x20A] = 0x00
-        mpu.memory[0x20B] = 0x00    # Pointer to header #3 (not implemented)
-        mpu.memory[0x20B] = 0x00
+        mpu.memory[0x207] = 0x03    # header: IND (Secondary WORD)
+        mpu.memory[0x208] = 0x02    # header: ENT (Secondary WORD)
+        mpu.memory[0x209] = 0x0D    # Pointer to header #1
+        mpu.memory[0x20A] = 0x02
+        mpu.memory[0x20B] = 0x00    # Pointer to header #2 (not implemented)
+        mpu.memory[0x20C] = 0x00
         # Forth WORD - Primitive
         mpu.memory[0x20D] = 0x0F    # header: pointer to code field
         mpu.memory[0x20E] = 0x02
         mpu.memory[0x20F] = 0x00 
+        # Forth Return Stack
+        mpu.memory[0x17D] = 0x00
+        mpu.memory[0x17E] = 0x05    # header: pointer to code field
+        mpu.memory[0x17F] = 0x02 
 
         p = copy.copy(mpu.p)
         a = copy.copy(mpu.a)
-        x = {0 : 0x17D, 1 : 0x4444, 2 : 0x2222}
+        x = copy.copy(mpu.x)
         y = copy.copy(mpu.y)
         s = copy.copy(mpu.sp)
-        i = 0x209
+        i = 0x20B
         w = 0x20D
 
         mon.do_goto('200')
         
+        self.assertEqual(0x07, mpu.memory[0x17E])
+        self.assertEqual(0x02, mpu.memory[0x17F])
         self.assertEqual(0x20F, mpu.pc)
         self.assertEqual(p, mpu.p)
         for j in range(3):
@@ -5114,40 +5121,51 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
-        codeFieldPtr = 0x202
-        mpu.ip = codeFieldPtr       # Codefield Pointer
-        mpu.x = {0 : 0x17F, 1 : 0x4444, 2 : 0x2222}
+        mpu.x[0] = 0x17D
 
-        mpu.memory[0x200] = 0x3B    # NXT - Primary Forth WORD Exit (pli nxt)
-        mpu.memory[0x201] = 0x00
+        # ITC Forth Exit
+        mpu.memory[0x200] = 0x6B    # PLI - Forth WORD Indirect Exit (ind inxt)
+        # ITC Forth Next
+        mpu.memory[0x201] = 0x9B    # IND
+        mpu.memory[0x202] = 0x3B    # NXT
+        # ITC Forth Enter
+        mpu.memory[0x203] = 0xDB    # OIS - Forth WORD Indirect Enter (ois ent)
+        mpu.memory[0x204] = 0x7B    # ENT
         # Forth WORD - Secondary Code Field
-        mpu.memory[0x202] = 0x05    # Pointer to header #1
-        mpu.memory[0x203] = 0x02
-        mpu.memory[0x204] = 0x00    # Pointer to header #2 (partial)
+        mpu.memory[0x205] = 0x07    # Pointer to header #1
+        mpu.memory[0x206] = 0x02
         # Forth WORD - Secondary
-        mpu.memory[0x205] = 0xDB    # header: OIS (Secondary WORD)
-        mpu.memory[0x206] = 0x7B    # header: ENT (Secondary WORD)
-        mpu.memory[0x207] = 0x0D    # Pointer to header #1
-        mpu.memory[0x208] = 0x02
-        mpu.memory[0x209] = 0x00    # Pointer to header #2 (not implemented)
-        mpu.memory[0x20A] = 0x00
-        mpu.memory[0x20B] = 0x00    # Pointer to header #3 (not implemented)
-        mpu.memory[0x20B] = 0x00
+        mpu.memory[0x207] = 0x03    # header: IND (Secondary WORD)
+        mpu.memory[0x208] = 0x02    # header: ENT (Secondary WORD)
+        mpu.memory[0x209] = 0x0D    # Pointer to header #1
+        mpu.memory[0x20A] = 0x02
+        mpu.memory[0x20B] = 0x00    # Pointer to header #2 (not implemented)
+        mpu.memory[0x20C] = 0x00
         # Forth WORD - Primitive
         mpu.memory[0x20D] = 0x0F    # header: pointer to code field
         mpu.memory[0x20E] = 0x02
         mpu.memory[0x20F] = 0x00 
+        # Forth Return Stack
+        mpu.memory[0x17D] = 0x00
+        mpu.memory[0x17E] = 0x05    # header: pointer to code field
+        mpu.memory[0x17F] = 0x02 
+        # Forth Parameter Stack
+        mpu.memory[0x1FD] = 0x00
+        mpu.memory[0x1FE] = 0x00    # header: pointer to code field
+        mpu.memory[0x1FF] = 0x00 
 
         p = copy.copy(mpu.p)
         a = copy.copy(mpu.a)
         x = copy.copy(mpu.x)
         y = copy.copy(mpu.y)
-        s = {0 : 0x1FF, 1 : 0x1FD}
-        i = 0x209
-        w = 0x20D
+        s = copy.copy(mpu.sp)
+        i = 0x20B; w = 0x20D
+        x[0] = 0x17F; s[1] = 0x1FD
 
         mon.do_goto('200')
         
+        self.assertEqual(0x07, mpu.memory[0x1FE])
+        self.assertEqual(0x02, mpu.memory[0x1FF])
         self.assertEqual(0x20F, mpu.pc)
         self.assertEqual(p, mpu.p)
         for j in range(3):
@@ -5158,8 +5176,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
             self.assertEqual(s[j], mpu.sp[j])
         self.assertEqual(i, mpu.ip)
         self.assertEqual(w, mpu.wp)
-    
-    
+
     # txy (oay txa)
     
     def test_transfer_x_to_y(self):

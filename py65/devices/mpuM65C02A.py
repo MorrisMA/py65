@@ -100,7 +100,7 @@ class MPU():
         self.reset()
 
     def reprformat(self):
-        return ("%sPC   AC   XR   YR   SP   VM  NVMBDIZC\n"
+        return ("%s PC   AC   XR   YR   SP   VM  NVMBDIZC\n"
                 "%s: %04X %04X %04X %04X %04X %04X %s\n"
                 "%s  %04X %04X %04X %04X %04X DL YXSIZ\n"
                 "%s  %04X %04X %04X           %d%d %d%d%d%d%d\n")
@@ -251,14 +251,12 @@ class MPU():
             data += self.rdPM() << 8
         else:
             data  = self.rdPM()
-            if data & self.NEGATIVE:
-                data |= self.signExtend
-        return op(data)
+        op(data)
 
     def ro_zp(self, op):
         addr = self.rdPM()
-        if addr & self.NEGATIVE:
-            addr |= self.signExtend
+        #if addr & self.NEGATIVE:    # Probably don't want to sign-extend for
+            #addr |= self.signExtend # sp-relative. Negative offsets undefined.
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -286,8 +284,8 @@ class MPU():
 
     def wo_zp(self, reg):
         addr = self.rdPM()
-        if addr & self.NEGATIVE:
-            addr |= self.signExtend
+        #if addr & self.NEGATIVE:
+            #addr |= self.signExtend
         data = reg()
         mask = self.byteMask
         hiAddr = 0
@@ -316,8 +314,8 @@ class MPU():
 
     def rmw_zp(self, op):
         addr = self.rdPM()
-        if addr & self.NEGATIVE:
-            addr |= self.signExtend
+        #if addr & self.NEGATIVE:
+            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -360,6 +358,7 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
+
         if addr & self.NEGATIVE:
             addr |= self.signExtend
         if index < 512:                     # page 0/1 + unsigned(offset)
@@ -731,8 +730,8 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
-        if addr & self.NEGATIVE:
-            addr |= self.signExtend
+        #if addr & self.NEGATIVE:
+            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -897,7 +896,7 @@ class MPU():
             data = (self.rdDM(mask & (addr + 1)) << 8) + data
         op(data)
 
-    def wo_absX(self):
+    def wo_absX(self, reg):
         if self.osx and not self.lscx:
             if self.p & self.MODE:
                 index = self.sp[1]
@@ -2858,9 +2857,9 @@ class MPU():
         self.rmw_ipp(self.opLSRm)
         self.clrPrefixFlags()
 
-    @instruction(name="ADD", mode="ipp", cycles=3)
+    @instruction(name="ADC", mode="ipp", cycles=3)
     def inst_0x63(self):
-        self.ro_ipp(self.opADD)
+        self.ro_ipp(self.opADC)
         self.clrPrefixFlags()
 
     @instruction(name="ROR", mode="ipp", cycles=4)
@@ -2898,9 +2897,9 @@ class MPU():
         self.rmw_ipp(self.opDECm)
         self.clrPrefixFlags()
 
-    @instruction(name="SUB", mode="ipp", cycles=3)
+    @instruction(name="SBC", mode="ipp", cycles=3)
     def inst_0xE3(self):
-        self.ro_ipp(self.opSUB)
+        self.ro_ipp(self.opSBC)
         self.clrPrefixFlags()
 
     @instruction(name="INC", mode="ipp", cycles=4)
@@ -3772,7 +3771,7 @@ class MPU():
 
     @instruction(name="SBC", mode="absX", cycles=4)
     def inst_0xFD(self):
-        self.absX(self.opSBC)
+        self.ro_absX(self.opSBC)
         self.clrPrefixFlags()
 
 #
