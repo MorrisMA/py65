@@ -1,0 +1,32 @@
+         PC   AC   XR   YR   SP   VM  NVMBDIZC
+M65C02A: 0000 0000 017D 0000 01FF 0000 00110010
+              0000 0000 0000 01FF 0000 DL YXSIZ
+              0000 0000 0000           10 00000
+
+.g 200
+   IR: 6B <= mem[0200]
+ rdDM: 05 <= mem[017E]
+ rdDM: 02 <= mem[017F]
+   IR: 9B <= mem[0201]
+   IR: 3B <= mem[0202]
+ rdDM: 07 <= mem[0205]
+ rdDM: 02 <= mem[0206]
+ rdDM: 03 <= mem[0207]
+ rdDM: 02 <= mem[0208]
+   IR: 9B <= mem[0203]
+   IR: 7B <= mem[0204]
+ wrDM: 02 => mem[017F]
+ wrDM: 07 => mem[017E]
+ rdDM: 0D <= mem[0209]
+ rdDM: 02 <= mem[020A]
+ rdDM: 0F <= mem[020D]
+ rdDM: 02 <= mem[020E]
+
+          PC   AC   XR   YR   SP   VM  NVMBDIZC
+M65C02A: 020F 0000 017D 0000 01FF 020B 00110010
+              0000 0000 0000 01FF 020D DL YXSIZ
+              0000 0000 0000           10 00000
+
+.cycles
+Total = 17, Num Inst = 3, Pgm Rd = 5, Data Rd = 10, Data Wr = 2, Dummy Cycles = 0
+  CPI = 5.67, Avg Inst Len = 1.67
