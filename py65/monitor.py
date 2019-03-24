@@ -482,7 +482,9 @@ class Monitor(cmd.Cmd):
         self._mpu.pc = self._address_parser.number(args)
         brks = [0x00]  # BRK
         self._mpu.dbg = True
+        self._mpu.out = open(os.getcwd()+'/trace.txt', 'at')
         self._run(stopcodes=brks)
+        self._mpu.out.close()
         self._mpu.dbg = False
 
     def _run(self, stopcodes):
@@ -606,6 +608,7 @@ class Monitor(cmd.Cmd):
                                 'sp', 's', 'sk', 'su',
                                 'p',
                                 'd',
+                                'e',
                                 'f', ):
                 self._output("Invalid register: %s" % register)
             else:
@@ -629,6 +632,7 @@ class Monitor(cmd.Cmd):
                                     'sp', 's', 'sk', 'su',
                                     'p',
                                     'd',
+                                    'e',
                                     'f', ]:
                         if register in ['pc']:
                             self._mpu.pc = intval
@@ -671,6 +675,8 @@ class Monitor(cmd.Cmd):
                                 self._mpu.p = intval | self._mpu.BREAK
                         elif register in ['d']:
                             self._mpu.dbgE = bool(intval & 1)
+                        elif register in ['e']:
+                            self._mpu.dbgF = bool(intval & 1)
                         elif register in ['f']:
                             self._mpu.siz = self._mpu.ind = False
                             self._mpu.osx = self._mpu.oax = False

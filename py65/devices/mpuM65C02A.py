@@ -59,7 +59,10 @@ class MPU():
     lscx = False
 
     dbgE = False
+    dbgF = False
     dbg  = False
+    
+    out  = None
 
     def __init__(self, memory=None, pc=0x0200):
         # config
@@ -102,8 +105,8 @@ class MPU():
     def reprformat(self):
         return ("%s PC   AC   XR   YR   SP   VM  NVMBDIZC\n"
                 "%s: %04X %04X %04X %04X %04X %04X %s\n"
-                "%s  %04X %04X %04X %04X %04X DL YXSIZ\n"
-                "%s  %04X %04X %04X           %d%d %d%d%d%d%d\n")
+                "%s  %04X %04X %04X %04X %04X DFLYXSIZ\n"
+                "%s  %04X %04X %04X           %d%d%d%d%d%d%d%d\n")
 
     def __repr__(self):
         flags = itoa(self.p | self.BREAK, 2).rjust(self.BYTE_WIDTH, '0')
@@ -131,6 +134,7 @@ class MPU():
                                     self.x[2],  # XBOS
                                     self.y[2],  # YBOS
                                     int(self.dbgE),
+                                    int(self.dbgF),
                                     int(self.lscx),
                                     int(self.oay),
                                     int(self.oax),
@@ -144,41 +148,56 @@ class MPU():
         def getInstruction(self):
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
             if self.dbg & self.dbgE:
-                print('   IR:', '%02X <= mem[%04X] ' \
-                      % (instructCode, self.pc)        )
                 #print('   IR:', '%02X <= mem[%04X] ' \
-                      #% (instructCode, self.pc), end='')
+                      #% (instructCode, self.pc)        )
+                print('   IR:', '%02X <= mem[%04X] ' \
+                      % (instructCode, self.pc), end='')
+                if not self.out.closed:
+                    print('   IR:', '%02X <= mem[%04X] ' \
+                          % (instructCode, self.pc), end='', file=self.out)
             pc = self.addrMask & (self.pc + 1)
             if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
-                pass
-                #if self.dbg & self.dbgE:
-                    #print()
-                #else: pass
-            #elif self.dbg & self.dbgE:
-                #psw = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
-                                               #int((self.p >> 6) & 1), \
-                                               #int((self.p >> 5) & 1), \
-                                               #int((self.p >> 4) & 1), \
-                                               #int((self.p >> 3) & 1), \
-                                               #int((self.p >> 2) & 1), \
-                                               #int((self.p >> 1) & 1), \
-                                               #int((self.p >> 0) & 1)   )
-                #flgs = 'F[%d%d %d%d%d%d%d]' % (int(self.dbgE), \
-                                               #int(self.lscx), \
-                                               #int(self.oay), \
-                                               #int(self.oax), \
-                                               #int(self.osx), \
-                                               #int(self.ind), \
-                                               #int(self.siz)    )                              
-                #print('A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
-                      #'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
-                      #'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
-                      #'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
-                      #'I[%04X]' % self.ip,
-                      #'W[%04X]' % self.wp,
-                      #psw,
-                      #flgs )
-                #self.numInstructions += 1
+                #pass
+                if self.dbg & self.dbgE:
+                    print()
+                    if not self.out.closed:
+                        print(file=self.out)
+                else: pass
+            elif self.dbg & self.dbgE:
+                psw = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
+                                               int((self.p >> 6) & 1), \
+                                               int((self.p >> 5) & 1), \
+                                               int((self.p >> 4) & 1), \
+                                               int((self.p >> 3) & 1), \
+                                               int((self.p >> 2) & 1), \
+                                               int((self.p >> 1) & 1), \
+                                               int((self.p >> 0) & 1)   )
+                flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
+                                                int(self.dbgF), \
+                                                int(self.lscx), \
+                                                int(self.oay), \
+                                                int(self.oax), \
+                                                int(self.osx), \
+                                                int(self.ind), \
+                                                int(self.siz)    )                              
+                print('A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
+                      'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
+                      'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
+                      'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
+                      'I[%04X]' % self.ip,
+                      'W[%04X]' % self.wp,
+                      psw,
+                      flgs )
+                if not self.out.closed:
+                    print('A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
+                          'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
+                          'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
+                          'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
+                          'I[%04X]' % self.ip,
+                          'W[%04X]' % self.wp,
+                          psw,
+                          flgs, file=self.out)
+                self.numInstructions += 1
             else:
                 self.numInstructions += 1
             self.processorCycles += 1
@@ -247,6 +266,9 @@ class MPU():
         tmp = self.byteMask & self.memory[self.addrMask & self.pc]
         if self.dbg & self.dbgE:
             print(' rdPM:', '%02X <= mem[%04X]' % (tmp, self.pc))
+            if not self.out.closed:
+                print(' rdPM:', '%02X <= mem[%04X]' % (tmp, self.pc),
+                      file=self.out)
         self.pc = self.addrMask & (self.pc + 1)
         self.processorCycles += 1; self.pgmMemRdCycles += 1
         return tmp
@@ -255,19 +277,32 @@ class MPU():
         tmp = self.byteMask & self.memory[addr]
         if self.dbg & self.dbgE:
             print(' rdDM:', '%02X <= mem[%04X]' % (tmp, addr))
+            if not self.out.closed:
+                print(' rdDM:', '%02X <= mem[%04X]' % (tmp, addr),
+                      file=self.out)
         self.processorCycles += 1; self.datMemRdCycles += 1
         return tmp
 
     def wrDM(self, addr, data):
         if self.dbg & self.dbgE:
             print(' wrDM:', '%02X => mem[%04X]' % (self.byteMask & data, addr))
+            if not self.out.closed:
+                print(' wrDM:', '%02X => mem[%04X]' % \
+                      (self.byteMask & data, addr), file=self.out)
         self.memory[addr] = self.byteMask & data
         self.processorCycles += 1; self.datMemWrCycles += 1
 
     def rwDM(self, addr):
         if self.dbg & self.dbgE:
             print(' rwDM:', '-- <> mem[%04X]' % (addr))
+            if not self.out.closed:
+                print(' rwDM:', '-- <> mem[%04X]' % (addr), file=self.out)
         self.processorCycles += 1; self.dummyCycles += 1
+
+    def ByteAt(self, addr):
+        addr = self.addrMask & addr
+        tmp1 = self.byteMask & self.memory[addr]
+        return tmp1
 
     def WordAt(self, addr):
         addr = self.addrMask & addr
@@ -287,8 +322,6 @@ class MPU():
 
     def ro_zp(self, op):
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:    # Probably don't want to sign-extend for
-            #addr |= self.signExtend # sp-relative. Negative offsets undefined.
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -316,8 +349,6 @@ class MPU():
 
     def wo_zp(self, reg):
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         data = reg()
         mask = self.byteMask
         hiAddr = 0
@@ -346,8 +377,6 @@ class MPU():
 
     def rmw_zp(self, op):
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -391,8 +420,6 @@ class MPU():
 
         addr = self.rdPM()
 
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         if index < 512:                     # page 0/1 + unsigned(offset)
             hiAddr = (self.addrHighMask & index)
             mask = self.byteMask
@@ -433,8 +460,6 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         if index < 512:                     # page 0/1 + unsigned(offset)
             hiAddr = (self.addrHighMask & index)
             mask = self.byteMask
@@ -475,8 +500,6 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = self.addrHighMask & index
         if index < 512:                     # page 0/1 + unsigned(offset)
@@ -517,8 +540,6 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.ind:
@@ -543,6 +564,9 @@ class MPU():
                 hiAddr = (self.addrHighMask & index)
             addr = hiAddr + (mask & (index + addr))
         else:                               # base + signed(offset)
+            mask = self.addrMask
+            if addr & self.NEGATIVE:
+                addr += self.addrHighMask   # sign extend
             addr = mask & (index + addr)
         
         data = self.rdDM(addr)
@@ -557,8 +581,6 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.ind:
@@ -595,8 +617,6 @@ class MPU():
 
     def ro_zpI(self, op):
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -627,8 +647,6 @@ class MPU():
 
     def wo_zpI(self, reg):
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -670,8 +688,6 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         if index < 512:                     # stk/zero page + unsigned(offset)
             hiAddr = (index & self.addrHighMask)
@@ -718,8 +734,6 @@ class MPU():
             index = self.x[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         if index < 512:                   # stk/zero page + unsigned(offset)
             hiAddr = (index & self.addrHighMask)
@@ -762,8 +776,6 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -800,8 +812,6 @@ class MPU():
             index = self.y[0]
 
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -1109,8 +1119,6 @@ class MPU():
 
     def _zp(self):
         addr = self.rdPM()
-        if addr & self.NEGATIVE:
-            addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -1226,8 +1234,6 @@ class MPU():
 
     def zprel(self, op):
         addr = self.rdPM()
-        #if addr & self.NEGATIVE:
-            #addr |= self.signExtend
         mask = self.byteMask
         hiAddr = 0
         if self.osx and not self.lscx:
@@ -1475,18 +1481,6 @@ class MPU():
 
         self.pc = addr
         
-        #if self.pc == 0x0424:   #   cin
-            #ch = input()
-            #if ch == '':
-                #ch = '\r'
-            #if len(ch) > 1: ch = ch[0]
-            ##print(ord(ch), ch)
-            #self.a[0] = ord(ch) & 0xFF
-        #elif self.pc == 0x425:  #   cout
-            #print('%c' % (self.a[0] & 0xFF), end='')
-        #elif self.pc == 0x426:  #   crout
-            #print()
-
     def opRTI(self):        # may need to be trapped if used in User mode
         self.siz = False
         tmpPSW = (self.PULL() | self.BREAK)
@@ -1955,20 +1949,19 @@ class MPU():
             hiSum = (hiSum + da1) & 0xF
             sum   = (hiSum << 4) + loSum
 
-            self.p &= ~(self.CARRY | self.OVERFLOW | self.NEGATIVE | self.ZERO)
-            if sum == 0:
-                self.p |= self.ZERO
-            else:
-                self.p |= sign & sum
-
-            if cy7 == 1:
-                self.p |= self.CARRY
             if (~(auL ^ auR) & (auL ^ sum)) & sign:
                 self.p |= self.OVERFLOW
+            if cy7 == 1:
+                self.p |= self.CARRY
+                sum &= mask
+            if sum == 0:
+                self.p |= self.ZERO
+            self.p |= sign & sum
         else:
             sum = auL + auR + cin
 
-            self.p &= ~(self.CARRY | self.OVERFLOW | self.NEGATIVE | self.ZERO)
+            self.p &= ~(self.CARRY | self.ZERO | self.OVERFLOW | self.NEGATIVE)
+            
             if (~(auL ^ auR) & (auL ^ sum)) & sign:
                 self.p |= self.OVERFLOW
             if sum > mask:
@@ -1976,13 +1969,13 @@ class MPU():
                 sum &= mask
             if sum == 0:
                 self.p |= self.ZERO
-            else:
+            if self.siz:
                 self.p |= (sign & sum) >> 8
+            else: self.p |= (sign & sum)
 
         reg = mask & sum
-
         self._putAluReg(reg)
-        
+
     def opSBC(self, data):
         if self.siz:
             sign = self.NEGATIVE << 8
@@ -2016,26 +2009,30 @@ class MPU():
             sum   = (hiSum << 4) + loSum
 
             self.p &= ~(self.CARRY | self.ZERO | self.NEGATIVE | self.OVERFLOW)
-            if sum == 0:
-                self.p |= self.ZERO
-            else:
-                self.p |= sign & sum
-            if cy7 == 1:
-                self.p |= self.CARRY
+            
             if (~(auL ^ auR) & (auL ^ sum)) & sign:
                 self.p |= self.OVERFLOW
+            if cy7 == 1:
+                self.p |= self.CARRY
+                sum &= mask
+            if sum == 0:
+                self.p |= self.ZERO
+            self.p |= sign & sum
         else:
             sum = auL + auR + cin
 
             self.p &= ~(self.CARRY | self.ZERO | self.OVERFLOW | self.NEGATIVE)
+            
             if (~(auL ^ auR) & (auL ^ sum)) & sign:
                 self.p |= self.OVERFLOW
-            if (mask & sum) == 0:
-                self.p |= self.ZERO
             if sum > mask:
                 self.p |= self.CARRY
                 sum &= mask
-            self.p |= (sign & sum) >> 8
+            if sum == 0:
+                self.p |= self.ZERO
+            if self.siz:
+                self.p |= (sign & sum) >> 8
+            else: self.p |= (sign & sum)
 
         reg = mask & sum
 
@@ -2207,18 +2204,20 @@ class MPU():
         sum = auL + auR + 1
 
         self.p &= ~(self.CARRY | self.ZERO | self.NEGATIVE)
+
         if sum > mask:
             self.p |= self.CARRY
         if (mask & sum) == 0:
             self.p |= self.ZERO
-        if sign & sum:
-            self.p |= self.NEGATIVE
 
         if self.siz:
             if (~(auL ^ auR) & (auL ^ sum)) & sign:
                 self.p |= self.OVERFLOW
             else:
-                self.p &= ~self.OVERFLOW    
+                self.p &= ~self.OVERFLOW
+            self.p |= (sign & sum) >> 8
+        else:
+            self.p |= (sign & sum)
 
     def opCMP(self, memVal):
         if self.oax:
@@ -2414,11 +2413,11 @@ class MPU():
     
     def opSWP(self):
         if self.oax:                  # SWP X
-            tmp = self.x[1]
+            tmp = self.x[0]
             self.x[0] = self.x[1]
             self.x[1] = tmp
         elif self.oay:                # SWP Y
-            tmp = self.y[1]
+            tmp = self.y[0]
             self.y[0] = self.y[1]
             self.y[1] = tmp
         elif self.ind:                # SWB
@@ -2470,6 +2469,83 @@ class MPU():
             pfa = (tmp2 << 8) + tmp1
         self.pc = pfa
     
+        if self.dbg & self.dbgF:
+            psw = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
+                                           int((self.p >> 6) & 1), \
+                                           int((self.p >> 5) & 1), \
+                                           int((self.p >> 4) & 1), \
+                                           int((self.p >> 3) & 1), \
+                                           int((self.p >> 2) & 1), \
+                                           int((self.p >> 1) & 1), \
+                                           int((self.p >> 0) & 1)   )
+            flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
+                                            int(self.dbgF), \
+                                            int(self.lscx), \
+                                            int(self.oay), \
+                                            int(self.oax), \
+                                            int(self.osx), \
+                                            int(self.ind), \
+                                            int(self.siz)    )
+            
+            dtStk = []
+            dtPtr = self.sp[1] + 1
+            while dtPtr < 0x200:
+                dtStk.append('%04X' % self.WordAt(dtPtr))
+                dtPtr += 2
+            
+            rsStk = []
+            rsPtr = self.x[0] + 1
+            while rsPtr < 0xA0 and rsPtr >= 0x20:
+                rsStk.append('%04X' % self.WordAt(rsPtr))
+                rsPtr += 2
+                
+            i = self.wp - 4; ch = self.ByteAt(i)
+            while ch < 127:
+                i -= 1; ch = self.ByteAt(i)
+            fn = ''; i += 1; ch = self.ByteAt(i)
+            while ch < 127:
+                if ch == 0: fn += 'X'
+                else: fn += '%c' % ch
+                i += 1; ch = self.ByteAt(i)
+            ch &= 0x7F
+            if ch == 0: fn += 'X'
+            else: fn += '%c' % (ch & 0x7F)
+            
+            if len(fn) > 21:
+                fn = fn[:21]
+            else:
+                fn = fn + ' '*(21 - len(fn))
+            
+            print('='*132,'\n',
+                  fn,
+                  'A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
+                  'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
+                  'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
+                  'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
+                  'I[%04X]' % (self.ip),
+                  'W[%04X]' % (self.wp),
+                  psw,
+                  flgs,
+                  '\n Dat Stk:', dtStk,
+                  '\n Rtn Stk:', rsStk,
+                  '\n'+'='*132)
+            if not self.out.closed:
+                print('='*132,'\n',
+                      fn,
+                      'A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
+                      'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
+                      'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
+                      'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
+                      'I[%04X]' % (self.ip),
+                      'W[%04X]' % (self.wp),
+                      psw,
+                      flgs,
+                      '\n Dat Stk:', dtStk,
+                      '\n Rtn Stk:', rsStk,
+                      '\n'+'='*132,
+                      file=self.out)
+
+        
     def opPHI(self):
         if self.osx:                # Change default stack for PHI
             self.osx = False        # change default to S, Sk or Su
@@ -3687,8 +3763,7 @@ class MPU():
     def inst_0x6C(self):
         _, self.pc = self._absI()
         
-        ###if self.dbg & self.dbgE:
-        if True:
+        if self.dbg and self.dbgF:
             psw = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
                                            int((self.p >> 6) & 1), \
                                            int((self.p >> 5) & 1), \
@@ -3697,13 +3772,14 @@ class MPU():
                                            int((self.p >> 2) & 1), \
                                            int((self.p >> 1) & 1), \
                                            int((self.p >> 0) & 1)   )
-            flgs = 'F[%d%d %d%d%d%d%d]' % (int(self.dbgE), \
-                                           int(self.lscx), \
-                                           int(self.oay), \
-                                           int(self.oax), \
-                                           int(self.osx), \
-                                           int(self.ind), \
-                                           int(self.siz)    )
+            flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
+                                            int(self.dbgF), \
+                                            int(self.lscx), \
+                                            int(self.oay), \
+                                            int(self.oax), \
+                                            int(self.osx), \
+                                            int(self.ind), \
+                                            int(self.siz)    )
             
             rsStk = []
             rsPtr = self.sp[1] + 1
@@ -3713,22 +3789,59 @@ class MPU():
             
             dtStk = []
             dtPtr = self.x[0]
-            while dtPtr < 0xA0 and dtPtr >= 0x20:
+            while dtPtr < 0x9F and dtPtr >= 0x20:
                 dtStk.append('%04X' % self.WordAt(dtPtr))
                 dtPtr += 2
                 
-            print('='*107,'\n',
+            ip = self.WordAt(0xB0) - 2
+            wp = self.WordAt(0xB3)
+            
+            i = wp - 4; ch = self.ByteAt(i)
+            while ch < 127:
+                i -= 1; ch = self.ByteAt(i)
+            fn = ''; i += 1; ch = self.ByteAt(i)
+            while ch < 127:
+                if ch == 0: fn += 'X'
+                else: fn += '%c' % ch
+                i += 1; ch = self.ByteAt(i)
+            ch &= 0x7F
+            if ch == 0: fn += 'X'
+            else: fn += '%c' % (ch & 0x7F)
+            
+            if len(fn) > 21:
+                fn = fn[:21]
+            else:
+                fn = fn + ' '*(21 - len(fn))
+            
+            print('='*132,'\n',
+                  fn,
                   'A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
                   'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
                   'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
                   'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
-                  'I[%04X]' % (self.WordAt(0xB0) - 2),
-                  'W[%04X]' % self.WordAt(0xB3),
+                  'I[%04X]' % ip,
+                  'W[%04X]' % wp,
                   psw,
                   flgs,
                   '\n Dat Stk:', dtStk,
                   '\n Rtn Stk:', rsStk,
-                  '\n'+'='*107)
+                  '\n'+'='*132)
+
+            if not self.out.closed:
+                print('='*132,'\n',
+                      fn,
+                      'A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
+                      'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
+                      'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
+                      'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
+                      'I[%04X]' % ip,
+                      'W[%04X]' % wp,
+                      psw,
+                      flgs,
+                      '\n Dat Stk:', dtStk,
+                      '\n Rtn Stk:', rsStk,
+                      '\n'+'='*132,
+                      file=self.out)
 
         self.clrPrefixFlags()
 
