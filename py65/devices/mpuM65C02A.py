@@ -164,14 +164,14 @@ class MPU():
                         print(file=self.out)
                 else: pass
             elif self.dbg & self.dbgE:
-                psw = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
-                                               int((self.p >> 6) & 1), \
-                                               int((self.p >> 5) & 1), \
-                                               int((self.p >> 4) & 1), \
-                                               int((self.p >> 3) & 1), \
-                                               int((self.p >> 2) & 1), \
-                                               int((self.p >> 1) & 1), \
-                                               int((self.p >> 0) & 1)   )
+                psw  = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
+                                                int((self.p >> 6) & 1), \
+                                                int((self.p >> 5) & 1), \
+                                                int((self.p >> 4) & 1), \
+                                                int((self.p >> 3) & 1), \
+                                                int((self.p >> 2) & 1), \
+                                                int((self.p >> 1) & 1), \
+                                                int((self.p >> 0) & 1)   )
                 flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
                                                 int(self.dbgF), \
                                                 int(self.lscx), \
@@ -207,7 +207,7 @@ class MPU():
         self.pc, instructCode = getInstruction(self)
         self.excycles = 0
         self.addcycles = self.extracycles[instructCode]
-        self.instruct[instructCode](self)               # execute instruction
+        self.instruct[instructCode](self)   # execute instruction
         return self
 
     # Function to clear the Prefix Instruction Flags
@@ -735,7 +735,7 @@ class MPU():
 
         addr = self.rdPM()
         mask = self.byteMask
-        if index < 512:                   # stk/zero page + unsigned(offset)
+        if index < 512:                     # stk/zero page + unsigned(offset)
             hiAddr = (index & self.addrHighMask)
             addr = hiAddr + (mask & (index + addr))
             # first indirection
@@ -749,10 +749,10 @@ class MPU():
                 tmp1 = self.rdDM(addr)
                 tmp2 = self.rdDM(mask & (addr + 1))
                 addr = (tmp2 << 8) + tmp1
-        else:                             # base + signed(offset)
+        else:                               # base + signed(offset)
             mask = self.addrMask
             if addr & self.NEGATIVE:
-                addr += self.addrHighMask  # sign extend
+                addr += self.addrHighMask   # sign extend
             addr = mask & (index + addr)
             # first indirection
             tmp1 = self.rdDM(addr)
@@ -1114,7 +1114,11 @@ class MPU():
             self.wrDM(mask & (addr + 1), data >> 8)
     
     #
-    # These routines return addresses. Used with PUL zp, JSR/JMP/PUL abs
+    # These routines return addresses.
+    #   Used with:  PUL zp
+    #               JSR/JMP/PUL abs
+    #               JMP absI
+    #               JMP absXI
     #
 
     def _zp(self):
@@ -1481,7 +1485,7 @@ class MPU():
 
         self.pc = addr
         
-    def opRTI(self):        # may need to be trapped if used in User mode
+    def opRTI(self):
         self.siz = False
         tmpPSW = (self.PULL() | self.BREAK)
         self.siz = True
@@ -1531,7 +1535,7 @@ class MPU():
         if not cc:
             self.pc = self.addrMask & (self.pc + offset)
 
-    def opBVS(self, offset):  # ((SIZ) ? BLT : BVC)
+    def opBVS(self, offset):    # ((SIZ) ? BLT : BVC)
         if self.siz:  # (N ^ V)
             cc = ((self.NEGATIVE & self.p) >> 7) ^ \
                  ((self.OVERFLOW & self.p) >> 6)
@@ -1541,23 +1545,19 @@ class MPU():
         if cc:
             self.pc = self.addrMask & (self.pc + offset)
 
-    def opBCC(self, offset):  # ((SIZ) ? BLS : BCC)
-        # if self.siz:  # ~C
-        # else:         # ~C
+    def opBCC(self, offset):    # ((SIZ) ? BLS : BCC)
         cc = (self.CARRY & self.p)
 
         if not cc:
             self.pc = self.addrMask & (self.pc + offset)
 
-    def opBCS(self, offset):  # ((SIZ) ? BHI : BCS)
-        # if self.siz:  # C
-        # else:         # C
+    def opBCS(self, offset):    # ((SIZ) ? BHI : BCS)
         cc = (self.CARRY & self.p)
 
         if cc:
             self.pc = self.addrMask & (self.pc + offset)
 
-    def opBNE(self, offset):  # ((SIZ) ? BLO : BNE)
+    def opBNE(self, offset):    # ((SIZ) ? BLO : BNE)
         if self.siz:  # ~(C | Z)
             cc = ((self.ZERO & self.p) >> 1) | (self.CARRY & self.p)
         else:         # ~Z
@@ -1566,7 +1566,7 @@ class MPU():
         if not cc:
                 self.pc = self.addrMask & (self.pc + offset)
 
-    def opBEQ(self, offset):  # ((SIZ) ? BHS : BEQ)
+    def opBEQ(self, offset):    # ((SIZ) ? BHS : BEQ)
         if self.siz:  # (C | Z)
             cc = ((self.ZERO & self.p) >> 1) | (self.CARRY & self.p)
         else:         # Z
@@ -1841,11 +1841,6 @@ class MPU():
 
         if self.siz:
             if self.ind:  # ASR
-#                sign = regVal & (self.NEGATIVE << 8)
-#                if sign:
-#                    self.p |= self.NEGATIVE
-#
-#                regVal = sign | ((self.wordMask & regVal) >> 1)
                 sign = regVal & (self.NEGATIVE << 8)
                 if self.p & self.OVERFLOW:
                     sign ^= (self.NEGATIVE << 8)
@@ -1945,6 +1940,7 @@ class MPU():
             # 6502 sets ALU flags using result before decimal adjust
             # 65C02/M65C02A set ALU flags after decimal adjust
             # ALU outputs are decimally adjusted
+            
             loSum = (loSum + da0) & 0xF
             hiSum = (hiSum + da1) & 0xF
             sum   = (hiSum << 4) + loSum
@@ -2004,6 +2000,7 @@ class MPU():
             # 6502 sets ALU flags using result before decimal adjust
             # 65C02/M65C02A set ALU flags after decimal adjust
             # ALU outputs are decimally adjusted
+            
             loSum = (loSum + da0) & 0xF
             hiSum = (hiSum + da1) & 0xF
             sum   = (hiSum << 4) + loSum
@@ -2392,61 +2389,61 @@ class MPU():
 #
 
     def opDUP(self):
-        if self.oax:                  # DUP X
+        if self.oax:                    # DUP X
             self.x[2] = self.x[1]
             self.x[1] = self.x[0]
-        elif self.oay:                # DUP Y
+        elif self.oay:                  # DUP Y
             self.y[2] = self.y[1]
             self.y[1] = self.y[0]
         elif self.siz or self.ind:
-            if self.siz and self.ind: # XIA
+            if self.siz and self.ind:   # XIA
                 tmp = self.ip
                 self.ip   = self.a[0]
                 self.a[0] = tmp
-            elif self.ind:            # TAI
+            elif self.ind:              # TAI
                 self.ip = self.a[0]
-            else:                     # TIA
+            else:                       # TIA
                 self.a[0] = self.ip
-        else:                         # DUP A
+        else:                           # DUP A
             self.a[2] = self.a[1]
             self.a[1] = self.a[0]
     
     def opSWP(self):
-        if self.oax:                  # SWP X
+        if self.oax:                    # SWP X
             tmp = self.x[0]
             self.x[0] = self.x[1]
             self.x[1] = tmp
-        elif self.oay:                # SWP Y
+        elif self.oay:                  # SWP Y
             tmp = self.y[0]
             self.y[0] = self.y[1]
             self.y[1] = tmp
-        elif self.ind:                # SWB
+        elif self.ind:                  # SWB
             tmp1 = self.byteMask &  self.a[0]
             tmp2 = self.byteMask & (self.a[0] >> self.BYTE_WIDTH)
             self.a[0] = (tmp1 << self.BYTE_WIDTH) | tmp2
-        else:                         # SWP A
+        else:                           # SWP A
             tmp = self.a[0]
             self.a[0] = self.a[1]
             self.a[1] = tmp
    
     def opROT(self):
-        if self.oax:                  # ROT X
+        if self.oax:                    # ROT X
             tmp = self.x[0]
             self.x[0] = self.x[1]
             self.x[1] = self.x[2]
             self.x[2] = tmp
-        elif self.oay:                # ROT Y
+        elif self.oay:                  # ROT Y
             tmp = self.y[0]
             self.y[0] = self.y[1]
             self.y[1] = self.y[2]
             self.y[2] = tmp
-        elif self.ind:                # REV
+        elif self.ind:                  # REV
             tmp = '%s' % bin(self.a[0])[2:]
             if len(tmp) < 16:
                 tmp = '0' * (16 - len(tmp)) + tmp
             tmp = tmp[::-1]
             self.a[0] = self.wordMask & int(tmp, base=2)
-        else:                         # ROT A
+        else:                           # ROT A
             tmp = self.a[0]
             self.a[0] = self.a[1]
             self.a[1] = self.a[2]
@@ -2470,14 +2467,14 @@ class MPU():
         self.pc = pfa
     
         if self.dbg & self.dbgF:
-            psw = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
-                                           int((self.p >> 6) & 1), \
-                                           int((self.p >> 5) & 1), \
-                                           int((self.p >> 4) & 1), \
-                                           int((self.p >> 3) & 1), \
-                                           int((self.p >> 2) & 1), \
-                                           int((self.p >> 1) & 1), \
-                                           int((self.p >> 0) & 1)   )
+            psw  = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
+                                            int((self.p >> 6) & 1), \
+                                            int((self.p >> 5) & 1), \
+                                            int((self.p >> 4) & 1), \
+                                            int((self.p >> 3) & 1), \
+                                            int((self.p >> 2) & 1), \
+                                            int((self.p >> 1) & 1), \
+                                            int((self.p >> 0) & 1)   )
             flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
                                             int(self.dbgF), \
                                             int(self.lscx), \
@@ -2587,9 +2584,7 @@ class MPU():
         self.siz = True
         self.PUSH(self.ip)
         
-        if self.ind:
-            self.ip = self.addrMask & (self.wp + 2)
-        else: self.ip = self.addrMask & (self.wp)
+        self.ip = self.addrMask & (self.wp + 2)
         
         self.opNXT()
 #
@@ -3764,14 +3759,14 @@ class MPU():
         _, self.pc = self._absI()
         
         if self.dbg and self.dbgF:
-            psw = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
-                                           int((self.p >> 6) & 1), \
-                                           int((self.p >> 5) & 1), \
-                                           int((self.p >> 4) & 1), \
-                                           int((self.p >> 3) & 1), \
-                                           int((self.p >> 2) & 1), \
-                                           int((self.p >> 1) & 1), \
-                                           int((self.p >> 0) & 1)   )
+            psw  = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
+                                            int((self.p >> 6) & 1), \
+                                            int((self.p >> 5) & 1), \
+                                            int((self.p >> 4) & 1), \
+                                            int((self.p >> 3) & 1), \
+                                            int((self.p >> 2) & 1), \
+                                            int((self.p >> 1) & 1), \
+                                            int((self.p >> 0) & 1)   )
             flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
                                             int(self.dbgF), \
                                             int(self.lscx), \

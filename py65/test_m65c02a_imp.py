@@ -1833,7 +1833,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.memory[0x209] = 0x00    # Pointer to header #2 (not implemented)
         mpu.memory[0x20A] = 0x00
         mpu.memory[0x20B] = 0x00    # Pointer to header #3 (not implemented)
-        mpu.memory[0x20B] = 0x00
+        mpu.memory[0x20C] = 0x00
         # Forth WORD - Primitive
         mpu.memory[0x20D] = 0x80    # header: bra $+2
         mpu.memory[0x20E] = 0x00
@@ -4634,20 +4634,20 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         mpu.memory[0x200] = 0x3B    # NXT - Primary Forth WORD Exit (pli nxt)
         mpu.memory[0x201] = 0x00
         # Forth WORD - Secondary Code Field
-        mpu.memory[0x202] = 0x05    # Pointer to header #1
+        mpu.memory[0x202] = 0x08    # Pointer to header #1
         mpu.memory[0x203] = 0x02
-        mpu.memory[0x204] = 0x00    # Pointer to header #2 (partial)
+        mpu.memory[0x204] = 0x00    # Pointer to header #2
+        mpu.memory[0x205] = 0x00    
+        mpu.memory[0x206] = 0x00    # Pointer to header #3
+        mpu.memory[0x207] = 0x00    
         # Forth WORD - Secondary
-        mpu.memory[0x205] = 0x8B    # header: IND (Secondary WORD)
-        mpu.memory[0x206] = 0x7B    # header: ENT (Secondary WORD)
-        mpu.memory[0x207] = 0x0D    # Pointer to header #1
-        mpu.memory[0x208] = 0x02
-        mpu.memory[0x209] = 0x00    # Pointer to header #2 (not implemented)
-        mpu.memory[0x20A] = 0x00
-        mpu.memory[0x20B] = 0x00    # Pointer to header #3 (not implemented)
-        mpu.memory[0x20B] = 0x00
+        mpu.memory[0x208] = 0x8B    # OSX
+        mpu.memory[0x209] = 0x7B    # ENT
+        mpu.memory[0x20A] = 0x0D    # Pointer to header #1
+        mpu.memory[0x20B] = 0x02
+        mpu.memory[0x20C] = 0x00    # Pointer to Header #2 (partial)
         # Forth WORD - Primitive
-        mpu.memory[0x20D] = 0x80    # header: pointer to code field
+        mpu.memory[0x20D] = 0x80    # Branch $+2
         mpu.memory[0x20E] = 0x00
         mpu.memory[0x20F] = 0x00 
 
@@ -4656,7 +4656,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         x = copy.copy(mpu.x)
         y = copy.copy(mpu.y)
         s = {0 : 0x1FF, 1 : 0x1FD}
-        i = 0x209
+        i = 0x20C
         w = 0x20D
 
         mon.do_goto('200')
