@@ -4810,7 +4810,7 @@ class M65C02A_Imp_AddressingMode_Tests(unittest.TestCase):
         self.assertEqual(0x1FF,  mpu.sp[0])
         self.assertEqual(0x0FF,  mpu.x[0])
         mpu.memory[0x200] = 0xCB    # OSZ
-        mpu.memory[0x201] = 0x5A    # PHA
+        mpu.memory[0x201] = 0x5A    # PHY
         self.assertEqual(0xCB,   mpu.memory[0x200])
         self.assertEqual(0x5A,   mpu.memory[0x201])
         self.assertEqual(0x00,   mpu.memory[0x202])

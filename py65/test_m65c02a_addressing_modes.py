@@ -46,55 +46,29 @@ class M65C02A_Addressing_Mode_Tests(unittest.TestCase):
         mpu.siz = True; mpu.pc = 0x201
         
         mpu.imm(op)
+
         wrdData = mpu.wordMask & ( (mpu.memory[0x202] << 8) \
                                   + mpu.memory[0x201]      )
         self.assertEqual(self.rtnVal, wrdData)
         self.assertEqual(0x203, mpu.pc)
         
-
-    # ro_zp (flags: {osx, ind, siz})
+    # ro_zp (flags: {osx, ind, siz} = {0, 0, 0})
     
-    def test_ro_zp(self):
+    def test_ro_zp_byte(self):
         def op(val):
             self.rtnVal = val
-        
+
         stdout = StringIO()
         mon = Monitor(stdout = stdout)
         mpu = mon._mpu
 
-        mpu.pc = 0x200
-
-        # zp pointers
-        mpu.memory[0x200] = 0xAA    # test 0
-        mpu.memory[0x201] = 0x55    # test 1 (w/o wrap around)
-        mpu.memory[0x202] = 0xFF    # test 1 (w/  wrap around)
-        mpu.memory[0x203] = 0x80    # test 2 (w/o wrap around)
-        mpu.memory[0x204] = 0xFF    # test 2 (w/  wrap around)
-        mpu.memory[0x205] = 0x82    # test 3 (w/o wrap around)
-        # zero page 
-        mpu.memory[0x0AA] = 0x96    # test 0
-        mpu.memory[0x055] = 0xC3    # test 1 (w/o wrap around)
-        mpu.memory[0x056] = 0x3C    
-        mpu.memory[0x0FF] = 0x7F    # test 1, 2 (w/  wrap around)
-        mpu.memory[0x000] = 0x01
-        mpu.memory[0x080] = 0x80    # test 1, 2 (w/o wrap around)
-        mpu.memory[0x081] = 0x01    
-        mpu.memory[0x080] = 0x82    # test 3 (w/o wrap around)
-        mpu.memory[0x081] = 0x01    
-        # indirect memory
-        mpu.memory[0x17F] = 0x33
-        mpu.memory[0x180] = 0x66
-        mpu.memory[0x181] = 0x99
-        mpu.memory[0x182] = 0x55
-        mpu.memory[0x183] = 0xAA
-        mpu.memory[0x1FF] = 0xAA
-        mpu.memory[0x100] = 0x55
+        mpu.osx = False; mpu.ind = False; mpu.siz = False;
         
+        mpu.pc = 0x200
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[zp] = 0x55
 
-        # test 0: {siz, ind, osx} = (0, 0, 0) -- read byte from page 0
-
-        mpu.siz = False; mpu.ind = False; mpu.osx = False
-        zp = mpu.memory[mpu.pc]
         data = mpu.byteMask & mpu.memory[zp]
         pc = mpu.pc + 1
         
@@ -103,74 +77,226 @@ class M65C02A_Addressing_Mode_Tests(unittest.TestCase):
         self.assertEqual(self.rtnVal, data)
         self.assertEqual(pc, mpu.pc)
         
-        # test 1: {siz, ind, osx} = (1, 0, 0) -- read word from page 0
+    # ro_zp (flags: {osx, ind, siz} = {0, 0, 1})
+    
+    def test_ro_zp_word(self):
+        def op(val):
+            self.rtnVal = val
 
-        mpu.siz = True; mpu.ind = False; mpu.osx = False
-        zp = mpu.memory[mpu.pc]
-        data = mpu.wordMask & ( (mpu.memory[mpu.byteMask & (zp + 1)] << 8) \
-                               + mpu.memory[zp]                           )
-        pc = mpu.pc + 1
-        
-        mpu.ro_zp(op)
-        
-        self.assertEqual(self.rtnVal, data)
-        self.assertEqual(pc, mpu.pc)
-        
-        # wrap word read around page boundary
-        
-        zp = mpu.memory[mpu.pc]
-        data = mpu.wordMask & ( (mpu.memory[mpu.byteMask & (zp + 1)] << 8) \
-                               + mpu.memory[zp]                           )
-        pc = mpu.pc + 1
-        
-        mpu.ro_zp(op)
-        
-        self.assertEqual(self.rtnVal, data)
-        self.assertEqual(pc, mpu.pc)
-        
-        # test 2: {siz, ind, osx} = (0, 1, 0) -- read byte indirect from page 0
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
 
-        mpu.siz = False; mpu.ind = True; mpu.osx = False
-        zp = mpu.memory[mpu.pc]
-        addr = mpu.wordMask & ( (mpu.memory[mpu.byteMask & (zp + 1)] << 8) \
-                               + mpu.memory[zp]                           )
-        data = mpu.byteMask & mpu.memory[addr]
+        mpu.osx = False; mpu.ind = False; mpu.siz = True;
+        
+        # zero page word access w/o wrap-around at page boundary
+        
+        mpu.pc = 0x200
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[zp] = 0xAA
+        mpu.memory[mpu.byteMask & (zp + 1)] = 0x55
+        
+        tmp1 = mpu.byteMask & mpu.memory[zp]
+        tmp2 = mpu.byteMask & mpu.memory[mpu.byteMask & (zp + 1)]
+        data = mpu.wordMask & ( (tmp2 << 8) + tmp1)
         pc = mpu.pc + 1
         
         mpu.ro_zp(op)
-        
+                
         self.assertEqual(self.rtnVal, data)
         self.assertEqual(pc, mpu.pc)
         
-        # wrap pointer read around page boundary
+        # zero page word access w/ wrap-around at page boundary
         
-        zp = mpu.memory[mpu.pc]
-        addr = mpu.wordMask & ( (mpu.memory[mpu.byteMask & (zp + 1)] << 8) \
-                               + mpu.memory[zp]                           )
-        data = mpu.byteMask & mpu.memory[addr]
-        pc = mpu.pc + 1
-        
-        mpu.ro_zp(op)
-        
-        self.assertEqual(self.rtnVal, data)
-        self.assertEqual(pc, mpu.pc)
-        
-        # test 3: {siz, ind, osx} = (1, 1, 0) -- read word indirect from page 0
+        mpu.pc = 0x200
+        zp = 0xFF
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[zp] = 0x33
+        mpu.memory[mpu.byteMask & (zp + 1)] = 0x66
 
-        # wrap pointer read around page boundary
-        
-        mpu.siz = False; mpu.ind = True; mpu.osx = False
-        zp = mpu.memory[mpu.pc]
-        addr = mpu.wordMask & ( (mpu.memory[mpu.byteMask & (zp + 1)] << 8) \
-                               + mpu.memory[zp]                           )
-        data = mpu.byteMask & mpu.memory[addr]
+        tmp1 = mpu.byteMask & mpu.memory[zp]
+        tmp2 = mpu.byteMask & mpu.memory[mpu.byteMask & (zp + 1)]
+        data = mpu.wordMask & ( (tmp2 << 8) + tmp1)
         pc = mpu.pc + 1
         
         mpu.ro_zp(op)
+                
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
         
+    # ro_zp (flags: {osx, ind, siz} = {0, 1, 0})
+    
+    def test_ro_zp_indirect_byte(self):
+        def op(val):
+            self.rtnVal = val
+
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = False; mpu.ind = True; mpu.siz = False;
+        
+        # zero page indirect byte access w/o wrap-around at page boundary
+        
+        mpu.pc = 0x200
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[mpu.pc + 1] = 0x55
+        mpu.memory[zp] = 0x01
+        mpu.memory[mpu.byteMask & (zp + 1)] = 0x02
+
+        data = mpu.byteMask & mpu.memory[mpu.pc + 1]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zp(op)
+                
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # zero page indirect byte access w/ wrap-around at page boundary
+        
+        mpu.pc = 0x200
+        zp = 0xFF
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[mpu.pc + 1] = 0x55
+        mpu.memory[zp] = 0x01
+        mpu.memory[mpu.byteMask & (zp + 1)] = 0x02
+
+        data = mpu.byteMask & mpu.memory[mpu.pc + 1]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zp(op)
+                
         self.assertEqual(self.rtnVal, data)
         self.assertEqual(pc, mpu.pc)
                 
+    # ro_zp (flags: {osx, ind, siz} = {0, 1, 1})
+    
+    def test_ro_zp_indirect_word(self):
+        def op(val):
+            self.rtnVal = val
+
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = False; mpu.ind = True; mpu.siz = True;
+        
+        # zero page indirect word access w/o wrap-around at page boundary
+        
+        mpu.pc = 0x200
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[mpu.pc + 1] = 0xAA
+        mpu.memory[mpu.pc + 2] = 0x55
+        mpu.memory[zp] = 0x01
+        mpu.memory[mpu.byteMask & (zp + 1)] = 0x02
+
+        tmp1 = mpu.byteMask & mpu.memory[mpu.pc + 1]
+        tmp2 = mpu.byteMask & mpu.memory[mpu.pc + 2]
+        data = mpu.wordMask & ( (tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zp(op)
+                
+        self.assertEqual(data, 0x55AA)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # zero page indirect word access w/ wrap-around at page boundary
+        
+        mpu.pc = 0x200
+        zp = 0xFF
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[mpu.pc + 1] = 0x33
+        mpu.memory[mpu.pc + 2] = 0x66
+        mpu.memory[zp] = 0x01
+        mpu.memory[mpu.byteMask & (zp + 1)] = 0x02
+
+        tmp1 = mpu.byteMask & mpu.memory[mpu.pc + 1]
+        tmp2 = mpu.byteMask & mpu.memory[mpu.pc + 2]
+        data = mpu.wordMask & ( (tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zp(op)
+                
+        self.assertEqual(data, 0x6633)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+    # ro_zp (flags: {osx, ind, siz} = {1, 0, 0})
+    
+    def test_ro_zp_stk_relative_byte(self):
+        def op(val):
+            self.rtnVal = val
+
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = True; mpu.ind = False; mpu.siz = False;
+        
+        # stack relative byte read using page 1 kernel stack w/o wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x1FE
+        sp = 0x01
+        mpu.memory[mpu.pc] = sp
+        mpu.memory[mpu.sp[1] + 1] = 0x55
+
+        data = mpu.byteMask & mpu.memory[mpu.sp[1] + sp]
+        pc = mpu.pc + 1
+        sk = mpu.sp[1]
+        
+        mpu.ro_zp(op)
+                
+        self.assertEqual(data, 0x55)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        self.assertEqual(sk, mpu.sp[1])
+        
+        # stack relative byte read using page 1 user stack w/o wrap-around
+        
+        mpu.p = mpu.p & 0xDF    # clr Mode bit
+        mpu.pc = 0x200
+        mpu.sp[0] = 0x17E
+        sp = 0x01
+        mpu.memory[mpu.pc] = sp
+        mpu.memory[mpu.sp[0] + 1] = 0xAA
+
+        data = mpu.byteMask & mpu.memory[mpu.sp[0] + sp]
+        pc = mpu.pc + 1
+        su = mpu.sp[0]
+        
+        mpu.ro_zp(op)
+                
+        self.assertEqual(data, 0xAA)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        self.assertEqual(su, mpu.sp[0])
+        
+    # ro_zp (flags: {osx, ind, siz} = {1, 0, 1})
+    
+    def test_ro_zp_stk_relative_word(self):
+        def op(val):
+            self.rtnVal = val
+        pass
+        
+    # ro_zp (flags: {osx, ind, siz} = {1, 1, 0})
+    
+    def test_ro_zp_stk_relative_indirect_byte(self):
+        def op(val):
+            self.rtnVal = val
+        pass
+        
+    # ro_zp (flags: {osx, ind, siz} = {1, 1, 1})
+    
+    def test_ro_zp_stk_relative_indirect_word(self):
+        def op(val):
+            self.rtnVal = val
+        pass
+        
 def test_suite():
     return unittest.findTestCases(sys.modules[__name__])
 
