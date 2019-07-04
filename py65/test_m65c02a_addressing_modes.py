@@ -1351,6 +1351,419 @@ class M65C02A_Addressing_Mode_Tests(unittest.TestCase):
         self.assertEqual(self.rtnVal, data)
         self.assertEqual(pc, mpu.pc)
         
+    # ro_zpX (flags: {osx, ind, siz} = {0, 1, 0})
+    
+    def test_ro_zpX_indirect_byte(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = False; mpu.ind = True; mpu.siz = False;
+        
+        # index < 512, index + unsigned offset read indirect byte no wrap-around
+        
+        mpu.pc = 0x200
+        mpu.x[0] = 0x7F
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0xFE] = 0x01
+        mpu.memory[0xFF] = 0x02
+        mpu.memory[0x201] = 0x55
+
+        data = mpu.byteMask & mpu.memory[0x201]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x55, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index < 512, index + unsigned offset read indirect byte w/ wrap-around
+        
+        mpu.pc = 0x200
+        mpu.x[0] = 0x7F
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0xFF] = 0x01
+        mpu.memory[0x00] = 0x02
+        mpu.memory[0x201] = 0xAA
+
+        data = mpu.byteMask & mpu.memory[0x201]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0xAA, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index > 511, index + signed offset read indirect byte, no wrap-around
+
+        mpu.pc = 0x200
+        mpu.x[0] = 0x281
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x201] = 0x03
+        mpu.memory[0x202] = 0x02
+        mpu.memory[0x203] = 0x66
+
+        data = mpu.byteMask & mpu.memory[0x203]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x66, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+    # ro_zpX (flags: {osx, ind, siz} = {0, 1, 1})
+    
+    def test_ro_zpX_indirect_word(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = False; mpu.ind = True; mpu.siz = True;
+        mpu.oax = True
+        
+        # index < 512, index + unsigned offset read indirect word no wrap-around
+        
+        mpu.pc = 0x200
+        mpu.a[0] = 0x7F
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0xFE] = 0x01
+        mpu.memory[0xFF] = 0x02
+        mpu.memory[0x201] = 0xAA
+        mpu.memory[0x202] = 0x55
+        
+        tmp1 = mpu.byteMask & mpu.memory[0x201]
+        tmp2 = mpu.byteMask & mpu.memory[0x202]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x55AA, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index < 512, index + unsigned offset read indirect word w/ wrap-around
+        
+        mpu.pc = 0x200
+        mpu.a[0] = 0x80
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0xFF] = 0x01
+        mpu.memory[0x00] = 0x02
+        mpu.memory[0x201] = 0x33
+        mpu.memory[0x202] = 0x66
+
+        tmp1 = mpu.byteMask & mpu.memory[0x201]
+        tmp2 = mpu.byteMask & mpu.memory[0x202]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x6633, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index > 511, index + signed offset read indirect word, no wrap-around
+
+        mpu.pc = 0x200
+        mpu.a[0] = 0x281
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x201] = 0x03
+        mpu.memory[0x202] = 0x02
+        mpu.memory[0x203] = 0x56
+        mpu.memory[0x204] = 0xAA
+
+        tmp1 = mpu.byteMask & mpu.memory[0x203]
+        tmp2 = mpu.byteMask & mpu.memory[0x204]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0xAA56, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+    # ro_zpX (flags: {osx, ind, siz} = {1, 0, 0})
+    
+    def test_ro_zpX_stk_relative_byte(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = True; mpu.ind = False; mpu.siz = False;
+        
+        # index < 512, index + unsigned offset read byte w/o wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x180
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x1FF] = 0x55
+
+        data = mpu.byteMask & mpu.memory[0x1FF]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x55, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index < 512, index + unsigned offset read byte w/ wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x180
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x100] = 0xAA
+
+        data = mpu.byteMask & mpu.memory[0x100]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0xAA, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index > 511, index + signed offset read byte, no wrap-around
+
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x281
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x201] = 0x66
+
+        data = mpu.wordMask & mpu.memory[0x201]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x66, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+    # ro_zpX (flags: {osx, ind, siz} = {1, 0, 1})
+    
+    def test_ro_zpX_stk_relative_word(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = True; mpu.ind = False; mpu.siz = True;
+        
+        # index < 512, index + unsigned offset read byte w/o wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x17F
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x1FE] = 0xAA
+        mpu.memory[0x1FF] = 0x55
+
+        tmp1 = mpu.byteMask & mpu.memory[0x1FE]
+        tmp2 = mpu.byteMask & mpu.memory[0x1FF]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x55AA, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index < 512, index + unsigned offset read byte w/ wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x180
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x1FF] = 0x33
+        mpu.memory[0x100] = 0x66
+
+        tmp1 = mpu.byteMask & mpu.memory[0x1FF]
+        tmp2 = mpu.byteMask & mpu.memory[0x100]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x6633, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index > 511, index + signed offset read byte, no wrap-around
+
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x281
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x201] = 0x56
+        mpu.memory[0x202] = 0xAA
+
+        tmp1 = mpu.byteMask & mpu.memory[0x201]
+        tmp2 = mpu.byteMask & mpu.memory[0x202]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0xAA56, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+    # ro_zpX (flags: {osx, ind, siz} = {1, 1, 0})
+    
+    def test_ro_zpX_stk_relative_indirect_byte(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = True; mpu.ind = True; mpu.siz = False;
+        
+        # index < 512, index + unsigned offset read indirect byte no wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x17F
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x1FE] = 0x01
+        mpu.memory[0x1FF] = 0x02
+        mpu.memory[0x201] = 0x55
+
+        data = mpu.byteMask & mpu.memory[0x201]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x55, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index < 512, index + unsigned offset read indirect byte w/ wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x17F
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x1FF] = 0x01
+        mpu.memory[0x100] = 0x02
+        mpu.memory[0x201] = 0xAA
+
+        data = mpu.byteMask & mpu.memory[0x201]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0xAA, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index > 511, index + signed offset read indirect byte, no wrap-around
+
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x281
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x201] = 0x03
+        mpu.memory[0x202] = 0x02
+        mpu.memory[0x203] = 0x66
+
+        data = mpu.byteMask & mpu.memory[0x203]
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x66, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+    # ro_zpX (flags: {osx, ind, siz} = {1, 1, 1})
+    
+    def test_ro_zpX_stk_relative_indirect_word(self):
+        stdout = StringIO()
+        mon = Monitor(stdout = stdout)
+        mpu = mon._mpu
+
+        mpu.osx = True; mpu.ind = True; mpu.siz = True;
+        
+        # index < 512, index + unsigned offset read indirect word no wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x17F
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x1FE] = 0x01
+        mpu.memory[0x1FF] = 0x02
+        mpu.memory[0x201] = 0xAA
+        mpu.memory[0x202] = 0x55
+        
+        tmp1 = mpu.byteMask & mpu.memory[0x201]
+        tmp2 = mpu.byteMask & mpu.memory[0x202]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x55AA, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index < 512, index + unsigned offset read indirect word w/ wrap-around
+        
+        mpu.pc = 0x200
+        mpu.sp[1] = 0x180
+        zp = 0x7F
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x1FF] = 0x01
+        mpu.memory[0x100] = 0x02
+        mpu.memory[0x201] = 0x33
+        mpu.memory[0x202] = 0x66
+
+        tmp1 = mpu.byteMask & mpu.memory[0x201]
+        tmp2 = mpu.byteMask & mpu.memory[0x202]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0x6633, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
+        # index > 511, index + signed offset read indirect word, no wrap-around
+
+        mpu.p &= ~0x20              # Set User Mode
+        mpu.pc = 0x200
+        mpu.sp[0] = 0x281           # Set User Mode Stack Pointer
+        zp = 0x80
+        mpu.memory[mpu.pc] = zp
+        mpu.memory[0x201] = 0x03
+        mpu.memory[0x202] = 0x02
+        mpu.memory[0x203] = 0x56
+        mpu.memory[0x204] = 0xAA
+
+        tmp1 = mpu.byteMask & mpu.memory[0x203]
+        tmp2 = mpu.byteMask & mpu.memory[0x204]
+        data = mpu.wordMask & ((tmp2 << 8) + tmp1)
+        pc = mpu.pc + 1
+        
+        mpu.ro_zpX(self.op)
+                
+        self.assertEqual(0xAA56, data)
+        self.assertEqual(self.rtnVal, data)
+        self.assertEqual(pc, mpu.pc)
+        
 def test_suite():
     return unittest.findTestCases(sys.modules[__name__])
 

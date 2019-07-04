@@ -1250,6 +1250,7 @@ class MPU():
             else:
                 mask = self.addrMask
             addr = hiAddr + (mask & (addr + base))
+        # first indirect
         if self.ind:
             tmp1 = self.rdDM(addr)
             tmp2 = self.rdDM(hiAddr + (mask & (addr + 1)))
