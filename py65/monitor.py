@@ -46,14 +46,11 @@ class Monitor(cmd.Cmd):
     Microprocessors = {'6502': NMOS6502, '65C02': CMOS65C02,
                        '65Org16': V65Org16, 'M65C02A': M65C02A}
 
-#    def __init__(self, mpu_type=NMOS6502, completekey='tab', stdin=None,
-#    stdout=None, argv=None, memory=None, putc_addr=0xF001, getc_addr=0xF004):
     def __init__(self,
                  mpu_type=NMOS6502,
                  completekey='tab',
                  stdin=None,
                  stdout=None,
-#                 argv=None,
                  argv=['monitor.py', '-m', 'M65C02A',],
                  memory=None,
                  putc_addr=0xF001,
@@ -674,9 +671,9 @@ class Monitor(cmd.Cmd):
                             else:
                                 self._mpu.p = intval | self._mpu.BREAK
                         elif register in ['d']:
-                            self._mpu.dbgE = bool(intval & 1)
+                            self._mpu.dbgD = bool(intval & 1)
                         elif register in ['e']:
-                            self._mpu.dbgF = bool(intval & 1)
+                            self._mpu.dbgE = bool(intval & 1)
                         elif register in ['f']:
                             self._mpu.siz = self._mpu.ind = False
                             self._mpu.osx = self._mpu.oax = False

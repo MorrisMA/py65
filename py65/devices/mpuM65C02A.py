@@ -58,8 +58,8 @@ class MPU():
 
     lscx = False
 
+    dbgD = False
     dbgE = False
-    dbgF = False
     dbg  = False
     
     out  = None
@@ -105,7 +105,7 @@ class MPU():
     def reprformat(self):
         return ("%s PC   AC   XR   YR   SP   VM  NVMBDIZC\n"
                 "%s: %04X %04X %04X %04X %04X %04X %s\n"
-                "%s  %04X %04X %04X %04X %04X DFLYXSIZ\n"
+                "%s  %04X %04X %04X %04X %04X DELYXSIZ\n"
                 "%s  %04X %04X %04X           %d%d%d%d%d%d%d%d\n")
 
     def __repr__(self):
@@ -133,8 +133,8 @@ class MPU():
                                     self.a[2],  # ABOS
                                     self.x[2],  # XBOS
                                     self.y[2],  # YBOS
+                                    int(self.dbgD),
                                     int(self.dbgE),
-                                    int(self.dbgF),
                                     int(self.lscx),
                                     int(self.oay),
                                     int(self.oax),
@@ -147,7 +147,7 @@ class MPU():
     def step(self):
         def getInstruction(self):
             instructCode = self.byteMask & self.memory[self.addrMask & self.pc]
-            if self.dbg & self.dbgE:
+            if self.dbg & self.dbgD:
                 #print('   IR:', '%02X <= mem[%04X] ' \
                       #% (instructCode, self.pc)        )
                 print('   IR:', '%02X <= mem[%04X] ' \
@@ -158,12 +158,12 @@ class MPU():
             pc = self.addrMask & (self.pc + 1)
             if instructCode in (0x8B, 0x9B, 0xAB, 0xBB, 0xCB, 0xDB, 0xEB, 0xFB):
                 #pass
-                if self.dbg & self.dbgE:
+                if self.dbg & self.dbgD:
                     print()
                     if not self.out.closed:
                         print(file=self.out)
                 else: pass
-            elif self.dbg & self.dbgE:
+            elif self.dbg & self.dbgD:
                 psw  = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
                                                 int((self.p >> 6) & 1), \
                                                 int((self.p >> 5) & 1), \
@@ -172,8 +172,8 @@ class MPU():
                                                 int((self.p >> 2) & 1), \
                                                 int((self.p >> 1) & 1), \
                                                 int((self.p >> 0) & 1)   )
-                flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
-                                                int(self.dbgF), \
+                flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgD), \
+                                                int(self.dbgE), \
                                                 int(self.lscx), \
                                                 int(self.oay), \
                                                 int(self.oax), \
@@ -264,7 +264,7 @@ class MPU():
 
     def rdPM(self):
         tmp = self.byteMask & self.memory[self.addrMask & self.pc]
-        if self.dbg & self.dbgE:
+        if self.dbg & self.dbgD:
             print(' rdPM:', '%02X <= mem[%04X]' % (tmp, self.pc))
             if not self.out.closed:
                 print(' rdPM:', '%02X <= mem[%04X]' % (tmp, self.pc),
@@ -275,7 +275,7 @@ class MPU():
 
     def rdDM(self, addr):
         tmp = self.byteMask & self.memory[addr]
-        if self.dbg & self.dbgE:
+        if self.dbg & self.dbgD:
             print(' rdDM:', '%02X <= mem[%04X]' % (tmp, addr))
             if not self.out.closed:
                 print(' rdDM:', '%02X <= mem[%04X]' % (tmp, addr),
@@ -284,7 +284,7 @@ class MPU():
         return tmp
 
     def wrDM(self, addr, data):
-        if self.dbg & self.dbgE:
+        if self.dbg & self.dbgD:
             print(' wrDM:', '%02X => mem[%04X]' % (self.byteMask & data, addr))
             if not self.out.closed:
                 print(' wrDM:', '%02X => mem[%04X]' % \
@@ -293,7 +293,7 @@ class MPU():
         self.processorCycles += 1; self.datMemWrCycles += 1
 
     def rwDM(self, addr):
-        if self.dbg & self.dbgE:
+        if self.dbg & self.dbgD:
             print(' rwDM:', '-- <> mem[%04X]' % (addr))
             if not self.out.closed:
                 print(' rwDM:', '-- <> mem[%04X]' % (addr), file=self.out)
@@ -2467,7 +2467,7 @@ class MPU():
             pfa = (tmp2 << 8) + tmp1
         self.pc = pfa
     
-        if self.dbg & self.dbgF:
+        if self.dbg & self.dbgE:
             psw  = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
                                             int((self.p >> 6) & 1), \
                                             int((self.p >> 5) & 1), \
@@ -2476,8 +2476,8 @@ class MPU():
                                             int((self.p >> 2) & 1), \
                                             int((self.p >> 1) & 1), \
                                             int((self.p >> 0) & 1)   )
-            flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
-                                            int(self.dbgF), \
+            flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgD), \
+                                            int(self.dbgE), \
                                             int(self.lscx), \
                                             int(self.oay), \
                                             int(self.oax), \
@@ -3759,7 +3759,7 @@ class MPU():
     def inst_0x6C(self):
         _, self.pc = self._absI()
         
-        if self.dbg and self.dbgF:
+        if self.dbg and self.dbgE:
             psw  = 'P[%d%d%d%d%d%d%d%d]' % (int((self.p >> 7) & 1), \
                                             int((self.p >> 6) & 1), \
                                             int((self.p >> 5) & 1), \
@@ -3768,8 +3768,8 @@ class MPU():
                                             int((self.p >> 2) & 1), \
                                             int((self.p >> 1) & 1), \
                                             int((self.p >> 0) & 1)   )
-            flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgE), \
-                                            int(self.dbgF), \
+            flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgD), \
+                                            int(self.dbgE), \
                                             int(self.lscx), \
                                             int(self.oay), \
                                             int(self.oax), \
