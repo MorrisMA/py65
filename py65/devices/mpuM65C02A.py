@@ -189,9 +189,9 @@ class MPU():
                       psw,
                       flgs )
                 if not self.out.closed:
-                    print('A[%04X,%04X,%04X]' % (self.a[0], self.a[1], self.a[2]),
-                          'X[%04X,%04X,%04X]' % (self.x[0], self.x[1], self.x[2]),
-                          'Y[%04X,%04X,%04X]' % (self.y[0], self.y[1], self.y[2]),
+                    print('A[%04X,%04X,%04X]' % (self.a[0],self.a[1],self.a[2]),
+                          'X[%04X,%04X,%04X]' % (self.x[0],self.x[1],self.x[2]),
+                          'Y[%04X,%04X,%04X]' % (self.y[0],self.y[1],self.y[2]),
                           'S[%04X,%04X]' % (self.sp[1], self.sp[0]), 
                           'I[%04X]' % self.ip,
                           'W[%04X]' % self.wp,
@@ -2037,7 +2037,7 @@ class MPU():
         self._putAluReg(reg)
         
 #
-#   Increment/Decrement/Compare Unit OPerations
+#   Increment/Decrement/Compare Unit Operations
 #
     #
     #   Increment Operations
@@ -2479,10 +2479,10 @@ class MPU():
             flgs = 'F[%d%d%d%d%d%d%d%d]' % (int(self.dbgD), \
                                             int(self.dbgE), \
                                             int(self.lscx), \
-                                            int(self.oay), \
-                                            int(self.oax), \
-                                            int(self.osx), \
-                                            int(self.ind), \
+                                            int(self.oay),  \
+                                            int(self.oax),  \
+                                            int(self.osx),  \
+                                            int(self.ind),  \
                                             int(self.siz)    )
             
             dtStk = []
@@ -2597,17 +2597,17 @@ class MPU():
         
             This routine provides a block move for bytes. The single byte
             operand of the instruction configures the instruction to perform a
-            conitnuous block move, or to stop after each move is made. The block
-            move mode cannot be interrupted, and the single move mode allows a
-            simple way to allow a block move to be interrupted. If the msb of
-            the operand byte is a 1, the single move mode is selected, otherwise
-            the block move mode is selected.
+            conitnuous block move, or to stop after each move is made. The
+            block move mode cannot be interrupted, and the single move mode 
+            allows a simple way to allow a block move to be interrupted. If
+            the msb of the operand byte is a 1, the single move mode is
+            selected, otherwise the block move mode is selected.
             
             In addition to the operating mode, the single byte operand includes
             fields for the source ptr, x[0], and the destination ptr, y[0].
             These pointers can be independently configured to hold (0), incre-
-            ment (2), or decrement (3). Finally, the accumulator holds the len-
-            gth counter. The counter is decremented and sets the ALU N and Z
+            ment (2), or decrement (3). Finally, the accumulator holds the 
+            length counter. The counter is decremented and sets the ALU N and Z
             flags. 
         """
         tmp2 = self.rdPM()
@@ -2645,13 +2645,13 @@ class MPU():
         
     def opXMA(self, data):
         """
-            This instruction exchanges the selected register with memory pointed
-            to by zp,X. The addressing mode support function delivers the memory
-            data to this function, which then completes the exchange with the 
-            selected register, and returns to the addressing mode function the
-            value in the selected register so the addressing mode function can
-            complete the operation by writing the register to the addressed
-            memory location.
+            This instruction exchanges the selected register with memory
+            pointed to by zp,X. The addressing mode support function delivers
+            the memory data to this function, which then completes the
+            exchange with the selected register, and returns to the 
+            addressing mode function the value in the selected register so
+            the addressing mode function can complete the operation by
+            writing the register to the addressed memory location.
             
             The instruction supports all of the prefix instructions. If OAX is
             used to select the X register, then the required index is provided
