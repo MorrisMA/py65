@@ -188,6 +188,7 @@ class Monitor(cmd.Cmd):
                            '>':    'fill',
                            'g':    'goto',
                            'h':    'help',
+#                           'hi':   'histogram',
                            '?':    'help',
                            'l':    'load',
                            'm':    'mem',
@@ -500,6 +501,8 @@ class Monitor(cmd.Cmd):
         self._mpu.datMemRdCycles  = 0
         self._mpu.datMemWrCycles  = 0
         self._mpu.dummyCycles     = 0
+        
+        #for i in range(256): self._mpu.histogram[i] = 0
 
         if not breakpoints:
             while True:
@@ -534,6 +537,7 @@ class Monitor(cmd.Cmd):
         outString += ", Data Rd = %d" % self._mpu.datMemRdCycles
         outString += ", Data Wr = %d" % self._mpu.datMemWrCycles
         outString += ", Dummy Cycles = %d\n" % self._mpu.dummyCycles
+        
         if self._mpu.numInstructions == 0:
             outString += "  CPI =  0.00"
             outString += ", Avg Inst Len = 0.00\n"
@@ -983,7 +987,8 @@ class Monitor(cmd.Cmd):
 
     def help_delete_breakpoint(self):
         self._output("delete_breakpoint <number>")
-        self._output("Delete the breakpoint on execution marked by the given number")
+        self._output("Delete the breakpoint on execution marked by"+
+                     " the given number")
 
     def do_show_breakpoints(self, args):
         for i, address in enumerate(self._breakpoints):
@@ -997,7 +1002,29 @@ class Monitor(cmd.Cmd):
     def help_show_breakpoints(self):
         self._output("show_breakpoints")
         self._output("Lists the currently assigned breakpoints")
-
+        
+##    def help_histogram(self):
+##        self._output("histogram")
+##        self._output("Displays the histogram of the instructions executed"+
+##                     " in previous run")
+##        
+##    def do_histogram(self, args):
+##        self._output("Instruction Histogram:")
+##        for i in range(16):
+##            outString = str()
+##            instructCount = int()
+##            for j in range(15):
+##                instructCount = self._mpu.histogram[(i << 4) + j]
+##                if instructCount > 99999:
+##                    outString += "*****, "
+##                else: outString += "%5d, " % instructCount
+##            instructCount = self._mpu.histogram[(i << 4) + 15]
+##            if instructCount > 99999:
+##                outString += "*****, "
+##            else: outString += "%5d, " % instructCount
+##            
+##            self._output(outString)
+        
 def main(args=None):
     c = Monitor()
 

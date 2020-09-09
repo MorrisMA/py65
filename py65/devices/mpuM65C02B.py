@@ -2,6 +2,11 @@ from utils.conversions import itoa
 from utils.devices import make_instruction_decorator
 
 class MPU():
+    '''
+        M65C02B - modification of the basic M65C02A such to match the new
+        instructions.
+    '''
+
     # vectors
 
     IRQ   = 0xFFFE

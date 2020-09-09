@@ -30,7 +30,7 @@ class Disassembler:
         containing (instruction byte count, human readable text)
         """
 
-        instruction = self._mpu.rdDM(pc)
+        instruction = self._mpu.ByteAt(pc)
         disasm, addressing = self._mpu.disassemble[instruction]
 
         if addressing == 'acc':
@@ -41,47 +41,47 @@ class Disassembler:
             length = 1
 
         elif addressing == 'imm':
-            byte = self._mpu.rdDM(pc + 1)
+            byte = self._mpu.ByteAt(pc + 1)
             disasm += ' #$' + self.byteFmt % byte
             length = 2
 
         elif addressing == 'zp':
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '$' + self.byteFmt % zp_address)
             disasm += ' %s' % address_or_label
             length = 2
 
         elif addressing == 'zpX':
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '$' + self.byteFmt % zp_address)
             disasm += ' %s,X' % address_or_label
             length = 2
 
         elif addressing == 'zpY':
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '$' + self.byteFmt % zp_address)
             disasm += ' %s,Y' % address_or_label
             length = 2
 
         elif addressing == 'zpI':
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '($' + self.byteFmt % zp_address + ')')
             disasm += ' %s' % address_or_label
             length = 2
 
         elif addressing == 'zpIY':
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '$' + self.byteFmt % zp_address)
             disasm += ' (%s),Y' % address_or_label
             length = 2
 
         elif addressing == 'zpXI':
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '$' + self.byteFmt % zp_address)
             disasm += ' (%s,X)' % address_or_label
@@ -123,7 +123,7 @@ class Disassembler:
             length = 3
 
         elif addressing == 'rel':
-            opv = self._mpu.rdDM(pc + 1)
+            opv = self._mpu.ByteAt(pc + 1)
             targ = pc + 2
             if opv & (1 << (self.byteWidth - 1)):
                 targ -= (opv ^ self.byteMask) + 1
@@ -138,12 +138,12 @@ class Disassembler:
 
         elif addressing == 'zprel':
             print(' --- zprel: ', end='')
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '$' + self.byteFmt % zp_address)
             disasm += ' %s' % address_or_label
             
-            opv = self._mpu.rdDM(pc + 2)
+            opv = self._mpu.ByteAt(pc + 2)
             targ = pc + 3
             if opv & (1 << (self.byteWidth - 1)):
                 targ -= (opv ^ self.byteMask) + 1
@@ -172,7 +172,7 @@ class Disassembler:
             length = 3
             
         elif addressing == 'ipp':
-            zp_address = self._mpu.rdDM(pc + 1)
+            zp_address = self._mpu.ByteAt(pc + 1)
             address_or_label = self._address_parser.label_for(
                 zp_address, '$' + self.byteFmt % zp_address)
             disasm += ' %s,I' % address_or_label

@@ -92,7 +92,7 @@ class Assembler:
                    # relative branch
                    absolute = int(''.join(operands), 16)
                    relative = (absolute - pc) - 3
-                   relative = relative & self._mpu.wordMask
+                   relative = relative & self._mpu.addrMask
                    operands = [(self._mpu.WORD_FORMAT % relative)]
                    operands = [operands[0][2:], operands[0][:2]]
                     
@@ -134,7 +134,7 @@ class Assembler:
                     raise SyntaxError(statement)
 
                 # if (number < 0) or (number > self._mpu.byteMask):
-                if (number < 0) or (number > self._mpu.wordMask):
+                if (number < 0) or (number > self._mpu.addrMask):
                     raise OverflowError
                 statement = before + '#$' + self._mpu.BYTE_FORMAT % number
 
